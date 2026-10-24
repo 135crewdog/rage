@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Rage</title>
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Rage">
+  <meta name="theme-color" content="#000000">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="apple-touch-icon" href="./icons/icon-180.png">
+  <link rel="icon" href="./icons/icon-32.png">
+  <link rel="stylesheet" href="./style.css">
+  <script type="importmap">{ "imports": { "three": "./vendor/three/build/three.module.js" } }</script>
+</head>
+<body>
+  <canvas id="view"></canvas>
+  <canvas id="hud"></canvas>
+
+  <div id="controls" hidden>
+    <div id="throttle" class="throttle" aria-label="Throttle">
+      <div class="track"><div class="mil"></div><div class="thumb"></div></div>
+    </div>
+    <div id="stick" class="stick" aria-hidden="true"><div class="dot"></div></div>
+    <button id="pause" class="pause" aria-label="Pause">II</button>
+  </div>
+
+  <pre id="debug" hidden></pre>
+
+  <div id="screens">
+    <section id="screen-start" class="screen">
+      <div class="card">
+        <h1>Rage</h1>
+        <p class="sub">An F-16. Hold the phone like a wheel.</p>
+        <button id="fly" class="btn primary">Fly</button>
+        <p class="update" hidden>A new version is ready. <button class="link update-btn">Update</button></p>
+      </div>
+    </section>
+
+    <section id="screen-pause" class="screen" hidden>
+      <div class="card">
+        <h2>Paused</h2>
+        <button id="resume" class="btn primary">Resume</button>
+        <button id="recenter" class="btn">Recenter controls</button>
+        <button id="fly-again" class="btn">Fly again</button>
+        <button id="settings-open" class="btn">Settings</button>
+        <p class="update" hidden>A new version is ready. <button class="link update-btn">Update</button></p>
+      </div>
+    </section>
+
+    <section id="screen-settings" class="screen" hidden>
+      <div class="card">
+        <header class="bar"><button id="settings-done" class="link">Done</button><h2>Settings</h2><span class="spacer"></span></header>
+        <p class="label">Theme</p>
+        <div id="theme" class="segments" role="radiogroup" aria-label="Theme">
+          <button data-theme="light" role="radio">Light</button>
+          <button data-theme="dark" role="radio">Dark</button>
+          <button data-theme="auto" role="radio">Auto</button>
+        </div>
+        <p class="version">Rage <span id="version"></span></p>
+      </div>
+    </section>
+
+    <section id="screen-rotate" class="screen" hidden>
+      <div class="card">
+        <h2>Rotate your phone</h2>
+        <p>Rage is flown in landscape. If it won't rotate, turn off Portrait Orientation Lock in Control Center.</p>
+      </div>
+    </section>
+
+    <section id="screen-denied" class="screen" hidden>
+      <div class="card">
+        <h2>Motion access denied</h2>
+        <p>Rage flies by tilting the phone, so it needs motion access. To fix it: close the app completely, open it again, tap Fly and choose Allow.</p>
+      </div>
+    </section>
+
+    <section id="screen-crashed" class="screen" hidden>
+      <div class="card">
+        <h2>Crashed</h2>
+        <button id="crash-again" class="btn primary">Fly again</button>
+      </div>
+    </section>
+  </div>
+
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>

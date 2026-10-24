@@ -117,6 +117,7 @@ export function createMemory() {
     rollI: 0,         // roll integrator, deg
     rWash: 0,         // low-pass state of stability-axis yaw rate (rad/s)
     backstop: false,
+    limiting: 0,      // g the AoA limiter is currently taking off the command
   };
 }
 
@@ -162,7 +163,8 @@ export function fcsStep(mem, stick, meas, dt) {
   const alphaDot = (alphaDeg - mem.alphaFilt) / PITCH.alphaFilterTau;
   mem.alphaFilt = lag(mem.alphaFilt, alphaDeg, PITCH.alphaFilterTau, dt);
   const alphaEff = alphaDeg + pseudoAlpha(pDeg) + alphaLead(alphaDot, qbar, meas.el);
-  const neff = ncmd - limiterSubtraction(alphaEff);
+  mem.limiting = limiterSubtraction(alphaEff);     // g the limiter is taking away, for the stick indicator
+  const neff = ncmd - mem.limiting;
 
   mem.qWash = lag(mem.qWash, q, PITCH.washoutTau, dt);
   const qWashed = q - mem.qWash;

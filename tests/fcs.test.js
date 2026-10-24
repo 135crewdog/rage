@@ -6,11 +6,10 @@ import {
   rollRequest, rollRateLimit, ariGain, yawGain,
 } from '../src/sim/fcs.js';
 import { PITCH } from '../src/sim/data/fcs.js';
-import { Simulation } from '../src/sim/simulation.js';
+import { Simulation, stepsFor, DT } from '../src/sim/simulation.js';
 import { IX } from '../src/sim/dynamics.js';
 
 const near = (a, b, tol, msg) => assert.ok(Math.abs(a - b) <= tol, `${msg ?? ''} ${a} vs ${b}`);
-const DT = 1 / 120;
 
 // A trimmed, level measurement set at 350 KCAS, 10,000 ft, with overrides.
 function level(over = {}) {
@@ -181,4 +180,27 @@ test('the power state reads the engine, not the slider', () => {
   for (let i = 0; i < 1200; i++) sim.step({ pitch: 0, roll: 0 }, 1);
   assert.equal(sim.powerState.label, 'AB');
   assert.ok(sim.powerState.percent > 90);
+});
+
+test('the fixed-step clock: 60, 30 and 120 Hz frames all step at 120 Hz, at most 8 steps a frame', () => {
+  let c = stepsFor(0, 1 / 60);
+  assert.equal(c.steps, 2);
+  near(c.carry, 0, 1e-9);
+  c = stepsFor(0, 1 / 30);
+  assert.equal(c.steps, 4);
+  c = stepsFor(0, 1 / 120);
+  assert.equal(c.steps, 1);
+  // a 50 Hz frame leaves a fraction that carries into the next frame
+  c = stepsFor(0, 0.02);
+  assert.equal(c.steps, 2);
+  near(c.carry, 0.02 - 2 * DT, 1e-12);
+  near(c.fraction, c.carry / DT, 1e-12);
+  const d = stepsFor(c.carry, 0.02);     // 0.0233 s is 2.8 steps: two now, the rest carried
+  assert.equal(d.steps, 2);
+  near(d.carry, 2 * 0.02 - 4 * DT, 1e-12);
+  // a long stall is capped and the excess dropped, not carried
+  const e = stepsFor(0, 1.0);
+  assert.equal(e.steps, 8);
+  assert.equal(e.carry, 0);
+  assert.equal(stepsFor(0, -1).steps, 0);
 });
