@@ -68,7 +68,7 @@ One version string lives in two places: `APP_VERSION` in `src/main.js` (shown in
 
 ## Icons
 
-`icons/make-icons.mjs` draws the icon (a HUD flight-path marker) and rasterises it with Chromium. Nothing is downloaded, so there is nothing to license.
+`icons/make-icons.mjs` draws the icon (the F-16's planform in HUD green, from the same measurements as the drawing check) and rasterises it with Chromium. Nothing is downloaded, so there is nothing to license.
 
 ## Layout
 
