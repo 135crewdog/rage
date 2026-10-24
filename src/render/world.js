@@ -12,23 +12,39 @@ export function createWorld(scene) {
   scene.background = new THREE.Color(HORIZON);
   scene.fog = new THREE.Fog(HORIZON, 4000, 24000);
 
+  // The ground draws its own grid: 100 m and 1 km lines, one pixel wide
+  // whatever the distance, each fading out before its cells get too small to
+  // resolve, so nothing shimmers. Lines at 100 m read as motion at low
+  // level; the kilometre lines read height and speed from altitude.
   const ground = new THREE.Mesh(
     new THREE.PlaneGeometry(80000, 80000),
-    new THREE.MeshLambertMaterial({ color: GROUND }),
+    new THREE.ShaderMaterial({
+      uniforms: {
+        ground: { value: new THREE.Color(GROUND) }, line: { value: new THREE.Color(0x7f9a6e) },
+        fogColor: { value: new THREE.Color(HORIZON) }, fogNear: { value: 4000 }, fogFar: { value: 24000 },
+      },
+      vertexShader: `varying vec3 wp; varying float depth;
+        void main() { vec4 w = modelMatrix * vec4(position, 1.0); wp = w.xyz; vec4 v = viewMatrix * w; depth = -v.z; gl_Position = projectionMatrix * v; }`,
+      fragmentShader: `uniform vec3 ground, line, fogColor; uniform float fogNear, fogFar; varying vec3 wp; varying float depth;
+        // how much of a line at this spacing covers the pixel, fading as cells shrink toward a pixel
+        float grid(vec2 p, float spacing) {
+          vec2 q = p / spacing;
+          vec2 fw = fwidth(q);
+          vec2 g = abs(fract(q - 0.5) - 0.5) / fw;
+          float a = 1.0 - min(min(g.x, g.y), 1.0);
+          float fade = 1.0 - smoothstep(0.08, 0.3, max(fw.x, fw.y));
+          return a * fade;
+        }
+        void main() {
+          float a = max(0.55 * grid(wp.xz, 100.0), 0.9 * grid(wp.xz, 1000.0));
+          vec3 c = mix(ground, line, a);
+          float f = smoothstep(fogNear, fogFar, depth);
+          gl_FragColor = vec4(mix(c, fogColor, f), 1.0);
+        }`,
+    }),
   );
   ground.rotation.x = -Math.PI / 2;
-  ground.position.y = -0.2;
   scene.add(ground);
-
-  // Two grids, 100 m and 1 km, moved under the camera in whole cells so they
-  // look endless. Lines at 100 m read as motion at low level; the kilometre
-  // lines read height and speed from altitude.
-  const fine = new THREE.GridHelper(12000, 120, 0x6f8460, 0x6f8460);
-  const coarse = new THREE.GridHelper(40000, 40, 0x8da37a, 0x8da37a);
-  fine.material.transparent = coarse.material.transparent = true;
-  fine.material.opacity = 0.6; coarse.material.opacity = 0.8;
-  fine.position.y = 0; coarse.position.y = 0.05;
-  scene.add(fine, coarse);
 
   // Sky: a dome with a vertical gradient from the horizon colour to the zenith.
   const sky = new THREE.Mesh(
@@ -51,10 +67,7 @@ export function createWorld(scene) {
     // keep the sky centred on the camera and the grids under it
     update(cameraPosition) {
       sky.position.copy(cameraPosition);
-      fine.position.x = Math.round(cameraPosition.x / 100) * 100;
-      fine.position.z = Math.round(cameraPosition.z / 100) * 100;
-      coarse.position.x = Math.round(cameraPosition.x / 1000) * 1000;
-      coarse.position.z = Math.round(cameraPosition.z / 1000) * 1000;
+      // the plane follows the camera; the grid is drawn in world coordinates, so it stays put
       ground.position.x = cameraPosition.x;
       ground.position.z = cameraPosition.z;
     },

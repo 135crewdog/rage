@@ -174,12 +174,16 @@ test('an air start the engine cannot hold is refused', () => {
 
 test('the power state reads the engine, not the slider', () => {
   const sim = new Simulation({ h: 5000, kcas: 350 });
-  assert.equal(sim.powerState.label, 'IDLE');
+  // the air start trims at about 14 % power: dry, 29 % of MIL
+  assert.equal(sim.powerState.label, 'DRY');
+  assert.ok(sim.powerState.percent > 20 && sim.powerState.percent < 40, `${sim.powerState.percent}`);
   for (let i = 0; i < 120; i++) sim.step({ pitch: 0, roll: 0 }, 1);
-  assert.equal(sim.powerState.label, 'IDLE');   // still spooling toward 60 %
+  assert.notEqual(sim.powerState.label, 'AB');   // still spooling toward 60 % after 1 s at full throttle
   for (let i = 0; i < 1200; i++) sim.step({ pitch: 0, roll: 0 }, 1);
   assert.equal(sim.powerState.label, 'AB');
   assert.ok(sim.powerState.percent > 90);
+  for (let i = 0; i < 2400; i++) sim.step({ pitch: 0, roll: 0 }, 0);
+  assert.equal(sim.powerState.label, 'IDLE');
 });
 
 test('the fixed-step clock: 60, 30 and 120 Hz frames all step at 120 Hz, at most 8 steps a frame', () => {

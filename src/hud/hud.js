@@ -153,7 +153,7 @@ export function createHud(canvas) {
     text(`${air.nz.toFixed(1)} G`, left, bottom - 54, 'left', 14);
     text(`α ${air.alpha.toFixed(1)}`, left, bottom - 36, 'left', 14);
     text(`M ${air.mach.toFixed(2)}`, left, bottom - 18, 'left', 14);
-    text(power.label === 'AB' ? `AB ${power.percent}%` : power.label, left, bottom, 'left', 14);
+    text(power.label === 'AB' ? `AB ${power.percent}%` : power.label === 'DRY' ? `${power.percent}%` : power.label, left, bottom, 'left', 14);
   }
 
   return { resize, draw };

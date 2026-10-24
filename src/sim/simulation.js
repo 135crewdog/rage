@@ -82,11 +82,13 @@ export class Simulation {
     return this.fcs.limiting > 0.05 || this.fcs.backstop;
   }
 
-  // The engine's power state for the HUD: IDLE, MIL, or AB with a percentage.
+  // The engine's power state for the HUD, from the engine and not the slider:
+  // IDLE, dry power as a percentage of MIL, MIL, or AB with its percentage.
   get powerState() {
     const pow = this.state[IX.POW];
     if (pow > 50.5) return { label: 'AB', percent: Math.round((pow - 50) * 2) };
-    if (pow > 49) return { label: 'MIL', percent: 0 };
+    if (pow > 49) return { label: 'MIL', percent: 100 };
+    if (pow > 2) return { label: 'DRY', percent: Math.round(pow * 2) };
     return { label: 'IDLE', percent: 0 };
   }
 }

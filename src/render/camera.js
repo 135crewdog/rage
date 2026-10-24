@@ -5,8 +5,8 @@
 
 import * as THREE from 'three';
 
-const BEHIND = 14;        // m along the jet's +z (behind the tail)
-const ABOVE = 2.6;        // m
+const BEHIND = 15;        // m along the jet's +z (behind the tail)
+const ABOVE = 3.2;        // m
 const SAG_PER_G = 0.35;   // m the camera sags toward the belly per g above 1
 const BUFFET_ONSET = 12;  // deg AoA
 const BUFFET_FULL = 25;
@@ -38,7 +38,7 @@ export function createChaseCamera(camera) {
       // buffet: a small, high-frequency shake that starts at 12° AoA and grows
       // to the 25° limit, stronger at higher dynamic pressure
       const a = Math.max(0, Math.min(1, (aux.alphaDeg - BUFFET_ONSET) / (BUFFET_FULL - BUFFET_ONSET)));
-      const amp = 0.25 * a * a * Math.min(1.5, aux.qbar / 300);
+      const amp = 0.12 * a * a * Math.min(1.5, aux.qbar / 300);   // halved after the first flights: it came on too hard
       shake.set(
         Math.sin(t * 61.3) + 0.5 * Math.sin(t * 97.1),
         Math.sin(t * 73.7 + 1.3) + 0.5 * Math.sin(t * 113.9),
@@ -47,7 +47,8 @@ export function createChaseCamera(camera) {
       pos.add(shake);
 
       camera.position.copy(pos);
-      look.set(0, 0.8, -8).applyQuaternion(q).add(position);
+      // aim a little above the jet so it sits in the lower third of the frame and the HUD's centre is clear sky
+      look.set(0, 2.6, -12).applyQuaternion(q).add(position);
       up.set(0, 1, 0).applyQuaternion(q);
       camera.up.copy(up);
       camera.lookAt(look);
