@@ -16,7 +16,7 @@ import { createStickIndicator } from './ui/stick.js';
 import { createScreens } from './ui/screens.js';
 import { upInScreen, tiltOf, stickFrom, smooth, MAPPING } from './input/tilt.js';
 
-export const APP_VERSION = '0.1.3';   // the same value as VERSION in sw.js
+export const APP_VERSION = '0.1.4';   // the same value as VERSION in sw.js
 const AIR_START = { h: 5000, kcas: 350 };
 const DEBUG = new URLSearchParams(location.search).get('debug') === '1';
 
@@ -29,6 +29,9 @@ const camera = new THREE.PerspectiveCamera(60, 1, 1, 30000);
 const world = createWorld(scene);
 const jet = createAircraft();
 scene.add(jet);
+// Fly waits for the model: on a first visit it may still be downloading.
+jet.ready.then(() => { document.getElementById('fly').disabled = false; },
+  (e) => { console.error(e); document.getElementById('jet-error').hidden = false; });
 const chase = createChaseCamera(camera);
 const hud = createHud(document.getElementById('hud'));
 

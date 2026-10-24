@@ -4,7 +4,7 @@
 // skipWaiting() on its own; the app offers the update on the start or pause
 // screen and posts "skip-waiting" when the pilot accepts.
 
-const VERSION = '0.1.3';   // the same value as APP_VERSION in src/main.js
+const VERSION = '0.1.4';   // the same value as APP_VERSION in src/main.js
 const CACHE = `rage-${VERSION}`;
 const FILES = [
   './',
@@ -17,6 +17,10 @@ const FILES = [
   './icons/icon-512.png',
   './vendor/three/build/three.module.js',
   './vendor/three/build/three.core.js',
+  './vendor/three/examples/jsm/loaders/GLTFLoader.js',
+  './vendor/three/examples/jsm/utils/BufferGeometryUtils.js',
+  './vendor/three/examples/jsm/utils/SkeletonUtils.js',
+  './models/f16c.glb',
   './src/main.js',
   './src/sim/data/aircraft.js',
   './src/sim/data/aero.js',
