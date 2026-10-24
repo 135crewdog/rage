@@ -16,7 +16,7 @@ import { createStickIndicator } from './ui/stick.js';
 import { createScreens } from './ui/screens.js';
 import { upInScreen, tiltOf, stickFrom, smooth, MAPPING } from './input/tilt.js';
 
-export const APP_VERSION = '0.1.1';   // the same value as VERSION in sw.js
+export const APP_VERSION = '0.1.2';   // the same value as VERSION in sw.js
 const AIR_START = { h: 5000, kcas: 350 };
 const DEBUG = new URLSearchParams(location.search).get('debug') === '1';
 
@@ -32,8 +32,11 @@ scene.add(jet);
 const chase = createChaseCamera(camera);
 const hud = createHud(document.getElementById('hud'));
 
+let sizedW = 0, sizedH = 0;
 function resize() {
   const w = view.clientWidth, h = view.clientHeight;
+  if (!w || !h) return;
+  sizedW = w; sizedH = h;
   renderer.setSize(w, h, false);
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
@@ -41,6 +44,12 @@ function resize() {
 }
 window.addEventListener('resize', resize);
 resize();
+// iOS can fire resize before the layout has settled, above all as a
+// home-screen app at launch and on rotation, which leaves the camera with the
+// wrong aspect; so every frame also checks the canvas's real size.
+function resizeIfChanged() {
+  if (view.clientWidth !== sizedW || view.clientHeight !== sizedH) resize();
+}
 
 // ---- simulation and flight state ----
 let sim = new Simulation(AIR_START);
@@ -244,6 +253,7 @@ const lerped = { position: new THREE.Vector3(), quaternion: new THREE.Quaternion
 
 function frame(now) {
   requestAnimationFrame(frame);
+  resizeIfChanged();
   const elapsed = Math.min(0.25, (now - last) / 1000);
   last = now;
 
