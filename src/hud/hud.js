@@ -10,11 +10,25 @@
 const GREEN = '#7cff4f';
 const OUTLINE = 'rgba(0,0,0,0.75)';
 const D2R = Math.PI / 180;
+const LADDER_RANGE = 12.5;   // deg of pitch each side of the nose that the ladder shows
+const BAR_HALF = 64;         // px, half-length of a pitch bar; the bars are symbols, so they never shrink
+const BAR_GAP = 22;          // px, half the gap in the middle of a bar
 
 // A unit NED direction at heading ψ and pitch θ (degrees).
 function direction(headingDeg, pitchDeg) {
   const h = headingDeg * D2R, p = pitchDeg * D2R;
   return [Math.cos(p) * Math.cos(h), Math.cos(p) * Math.sin(h), -Math.sin(p)];
+}
+
+// The direction a little to the right of (ψ, θ): used to find which way a
+// pitch bar lies on the screen, whatever the camera's bank.
+function rightOf(headingDeg, pitchDeg) {
+  const d = direction(headingDeg, pitchDeg);
+  const h = headingDeg * D2R;
+  const e = 0.03;
+  const v = [d[0] - e * Math.sin(h), d[1] + e * Math.cos(h), d[2]];
+  const m = Math.hypot(v[0], v[1], v[2]);
+  return [v[0] / m, v[1] / m, v[2] / m];
 }
 
 export function createHud(canvas) {
@@ -69,30 +83,39 @@ export function createHud(canvas) {
       if (major) text(String(((deg % 360) + 360) % 360 / 10).padStart(2, '0'), x, top + 22, 'center', 12);
     }
 
-    // pitch ladder and horizon: each line is the direction at heading ψ ± a
-    // span and pitch p, projected, so it lies on the scene and rolls with it
+    // pitch ladder: each bar is a fixed-size symbol drawn where its pitch
+    // angle falls on the screen, lying along the horizon's direction there.
+    // Only the bars within LADDER_RANGE of the nose show, plus the horizon
+    // line itself, the way a real HUD's glass shows a window of the ladder.
     ctx.save();
-    // the ladder shows through a window about the centre, like the glass of a real HUD
-    ctx.beginPath(); ctx.rect(cx - w * 0.27, top + 52, w * 0.54, bottom - top - 112); ctx.clip();
-    for (let p = -90; p <= 90; p += 5) {
-      const span = p === 0 ? 22 : 5;                 // degrees of azimuth each side
-      const a = project(direction(hdg - span, p)), b = project(direction(hdg + span, p));
-      const gap = project(direction(hdg - span * (p === 0 ? 0.22 : 0.3), p)), gapB = project(direction(hdg + span * (p === 0 ? 0.22 : 0.3), p));
-      if (!a.visible || !b.visible) continue;
-      if (Math.min(a.x, b.x) > w || Math.max(a.x, b.x) < 0 || Math.min(a.y, b.y) > h || Math.max(a.y, b.y) < 0) continue;
-      const dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy) || 1;
-      const tx = -dy / len * 8 * (p > 0 ? 1 : -1), ty = dx / len * 8 * (p > 0 ? 1 : -1);   // end ticks toward the horizon
+    ctx.beginPath(); ctx.rect(cx - w * 0.3, top + 52, w * 0.6, bottom - top - 112); ctx.clip();
+    const pFirst = Math.ceil((air.pitch - LADDER_RANGE) / 5) * 5, pLast = Math.floor((air.pitch + LADDER_RANGE) / 5) * 5;
+    const bars = [];
+    for (let p = pFirst; p <= pLast; p += 5) if (p >= -85 && p <= 85) bars.push(p);
+    if (!bars.includes(0)) bars.push(0);
+    for (const p of bars) {
+      const c = project(direction(hdg, p));
+      if (!c.visible) continue;
+      const r = project(rightOf(hdg, p));
+      let ux = r.x - c.x, uy = r.y - c.y;
+      const len = Math.hypot(ux, uy) || 1;
+      ux /= len; uy /= len;                           // along the bar, to the right
+      const nx = uy, ny = -ux;                        // screen "up" in the bar's frame
+      const half = p === 0 ? w * 0.26 : BAR_HALF, gap = p === 0 ? 40 : BAR_GAP;
+      const tick = p > 0 ? -8 : 8;                    // end ticks point toward the horizon
       dashed(p < 0);
       stroke(() => {
-        ctx.moveTo(a.x, a.y); ctx.lineTo(gap.x, gap.y);
-        ctx.moveTo(gapB.x, gapB.y); ctx.lineTo(b.x, b.y);
-        if (p !== 0) { ctx.moveTo(a.x, a.y); ctx.lineTo(a.x + tx, a.y + ty); ctx.moveTo(b.x, b.y); ctx.lineTo(b.x + tx, b.y + ty); }
+        ctx.moveTo(c.x - ux * half, c.y - uy * half); ctx.lineTo(c.x - ux * gap, c.y - uy * gap);
+        ctx.moveTo(c.x + ux * gap, c.y + uy * gap); ctx.lineTo(c.x + ux * half, c.y + uy * half);
+        if (p !== 0) {
+          ctx.moveTo(c.x - ux * half, c.y - uy * half); ctx.lineTo(c.x - ux * half + nx * tick, c.y - uy * half + ny * tick);
+          ctx.moveTo(c.x + ux * half, c.y + uy * half); ctx.lineTo(c.x + ux * half + nx * tick, c.y + uy * half + ny * tick);
+        }
       });
       dashed(false);
       if (p !== 0) {
-        const ux = dx / len * 14, uy = dy / len * 14;
-        text(String(Math.abs(p)), a.x - ux, a.y - uy, 'center', 12);
-        text(String(Math.abs(p)), b.x + ux, b.y + uy, 'center', 12);
+        text(String(Math.abs(p)), c.x - ux * (half + 14), c.y - uy * (half + 14), 'center', 12);
+        text(String(Math.abs(p)), c.x + ux * (half + 14), c.y + uy * (half + 14), 'center', 12);
       }
     }
     ctx.restore();

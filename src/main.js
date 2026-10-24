@@ -16,7 +16,7 @@ import { createStickIndicator } from './ui/stick.js';
 import { createScreens } from './ui/screens.js';
 import { upInScreen, tiltOf, stickFrom, smooth, MAPPING } from './input/tilt.js';
 
-export const APP_VERSION = '0.1.1';   // the same value as VERSION in sw.js
+export const APP_VERSION = '0.1.2';   // the same value as VERSION in sw.js
 const AIR_START = { h: 5000, kcas: 350 };
 const DEBUG = new URLSearchParams(location.search).get('debug') === '1';
 
@@ -32,8 +32,11 @@ scene.add(jet);
 const chase = createChaseCamera(camera);
 const hud = createHud(document.getElementById('hud'));
 
+let sizedW = 0, sizedH = 0;
 function resize() {
   const w = view.clientWidth, h = view.clientHeight;
+  if (!w || !h) return;
+  sizedW = w; sizedH = h;
   renderer.setSize(w, h, false);
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
@@ -41,6 +44,12 @@ function resize() {
 }
 window.addEventListener('resize', resize);
 resize();
+// iOS can fire resize before the layout has settled, above all as a
+// home-screen app at launch and on rotation, which leaves the camera with the
+// wrong aspect; so every frame also checks the canvas's real size.
+function resizeIfChanged() {
+  if (view.clientWidth !== sizedW || view.clientHeight !== sizedH) resize();
+}
 
 // ---- simulation and flight state ----
 let sim = new Simulation(AIR_START);
@@ -49,9 +58,12 @@ let carry = 0;
 let prevPose = null, pose = null;
 let throttleValue = sim.trimThrottle;
 const stick = { pitch: 0, roll: 0 };
+// Portrait: the rotate screen, whatever else was asked for.
+const portrait = matchMedia('(orientation: portrait)');
 const screens = createScreens({
   version: APP_VERSION,
   onFly: fly, onResume: resume, onRecenter: recenter, onFlyAgain: flyAgain, onUpdate: applyUpdate,
+  locked: () => (portrait.matches ? 'rotate' : null),
 });
 const throttle = createThrottle(document.getElementById('throttle'), throttleValue, (v) => { throttleValue = v; });
 const stickIndicator = createStickIndicator(document.getElementById('stick'));
@@ -106,7 +118,14 @@ function recenter() {
   wantRecenter = true;
   neutral = null;
   stick.pitch = stick.roll = smoothed.pitch = smoothed.roll = 0;
-  if (mode === 'paused') screens.show('pause');
+}
+
+// The screen that belongs to the current mode (the rotate screen wins in portrait).
+function showForMode() {
+  if (mode === 'flying') screens.hide();
+  else if (mode === 'paused') screens.show('pause');
+  else if (mode === 'crashed') screens.show('crashed');
+  else screens.show('start');
 }
 
 // ---- screens and modes ----
@@ -131,6 +150,7 @@ function fly() {
 }
 
 function startFlight() {
+  if (portrait.matches) { screens.show('rotate'); return; }   // no flying in portrait
   mode = 'flying';
   controls.hidden = false;
   screens.hide();
@@ -152,6 +172,7 @@ function resume() {
 }
 
 function flyAgain() {
+  if (portrait.matches) return;
   airStart();
   recenter();
   startFlight();
@@ -169,14 +190,10 @@ document.addEventListener('visibilitychange', () => {
 });
 
 // Portrait: show the rotate screen; on any rotation during flight, pause and recenter.
-const portrait = matchMedia('(orientation: portrait)');
 function onRotate() {
-  if (portrait.matches) {
-    if (mode === 'flying') pause();
-    screens.show('rotate');
-  } else {
-    if (mode === 'paused') { recenter(); screens.show('pause'); } else if (mode !== 'flying') screens.show(mode === 'crashed' ? 'crashed' : 'start');
-  }
+  if (portrait.matches && mode === 'flying') pause();
+  if (!portrait.matches && mode === 'paused') recenter();
+  showForMode();
   resize();
 }
 portrait.addEventListener('change', onRotate);
@@ -188,7 +205,9 @@ function onScreenAngle() {
   const a = screenAngle();
   if (a === lastAngle) return;
   lastAngle = a;
-  if (mode === 'flying') { pause(); recenter(); } else if (mode === 'paused') recenter();
+  if (mode === 'flying') pause();
+  if (mode === 'paused') recenter();
+  showForMode();
 }
 if (screen.orientation) screen.orientation.addEventListener('change', onScreenAngle);
 window.addEventListener('orientationchange', onScreenAngle);
@@ -244,6 +263,7 @@ const lerped = { position: new THREE.Vector3(), quaternion: new THREE.Quaternion
 
 function frame(now) {
   requestAnimationFrame(frame);
+  resizeIfChanged();
   const elapsed = Math.min(0.25, (now - last) / 1000);
   last = now;
 
