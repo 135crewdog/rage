@@ -8,7 +8,7 @@ Read this file before touching anything in the simulation. When this file and yo
 
 A real F-16, as far as public data allows, flown by tilting an iPhone. Not an arcade model. The pilot's input is a stick force. The fly-by-wire flight control system (FCS) turns that force into surface commands, the surfaces move the jet through real aerodynamic data, and every behaviour the pilot feels comes out of that chain. Nothing in the game points the jet where the player wants it to go. If the jet does something unrealistic, the fix belongs in the model, the FCS or the input mapping, never in a shortcut around them.
 
-What the pilot should feel, in their own words: "sense the stall approaching, almost hear the strain of the wings in a high-g turn, anticipate the trim changes that tell me speed, AoA and lift are correctly related." On a real F-16 the FCS does the trimming and won't let the jet stall, so that feel shows up as: g that builds and stops at the limiter, AoA that climbs as speed bleeds, a jet that won't give 9 g when slow, roll that softens at high AoA, and buffet as the limiter gets close. Section 10 says how each one shows on screen.
+What the pilot should feel, in their own words: "sense the stall approaching, almost hear the strain of the wings in a high-g turn, anticipate the trim changes that tell me speed, AoA and lift are correctly related." On a real F-16 the FCS does the trimming and won't let the jet stall, so that feel shows up as: g that builds and stops at the limiter, AoA that climbs as speed bleeds, a jet that won't give 9 g when slow, roll that softens at high AoA. On top of that, the game adds a buffet cue as the limiter gets close; that cue is ours, not documented F-16 behaviour. Section 10 says how each one shows on screen.
 
 ## 1. Concepts in one page
 
@@ -16,9 +16,9 @@ What the pilot should feel, in their own words: "sense the stall approaching, al
 - **Angle of attack (α)** is the angle between the nose (body x) and the oncoming air, measured in the jet's plane of symmetry. **Sideslip (β)** is the sideways angle. Almost every aerodynamic number depends on α.
 - **Dynamic pressure (q̄ = ½ρV²)** is how hard the air pushes. Force = q̄ × wing area × a coefficient. The coefficient comes from the tables; q̄ scales it.
 - **Coefficients in body axes.** The data give CX (force along the nose, negative is drag-like), CZ (force along the belly, negative is lift-like), CY (side force), and moment coefficients Cl, Cm, Cn (roll, pitch, yaw). They are not lift and drag; they are lift and drag already rotated into the body frame.
-- **Load factor (g, n_z)** is what an accelerometer in the cockpit reads: 1 in level flight, 9 at the limit. It is lift divided by weight, not anything to do with gravity's direction.
+- **Load factor (g, n_z)** is what an accelerometer in the cockpit reads: 1 in level flight, 9 at the limit. It is the body-axis normal force divided by weight (close to lift divided by weight at low AoA), not anything to do with gravity's direction.
 - **Relaxed static stability.** At the reference centre of gravity the F-16 is slightly unstable in pitch on its own: left alone, a nose-up disturbance grows. The FCS feeds AoA and pitch rate back to the stabilator to make it fly. That is why the FCS is not optional here: without it the model departs.
-- **Energy.** Specific excess power, Ps = V × (thrust − drag) / weight, in ft/s. Positive means the jet can climb or accelerate; negative means a turn is costing speed or height. Sustained turn rate is the fastest turn at Ps = 0. Instantaneous turn rate is the fastest turn at any Ps, limited by g or by AoA.
+- **Energy.** Specific excess power, Ps = V·(T·cosα·cosβ − D)/W, in ft/s; equivalently ḣ + V·V̇/g. Positive means the jet can climb or accelerate; negative means a turn is costing speed or height. Sustained turn rate is the fastest turn at Ps = 0. Instantaneous turn rate is the fastest turn at any Ps, limited by g or by AoA.
 - **Corner speed** is the slowest speed at which the jet can reach its g limit. Below it the jet runs out of AoA first; above it the g limit caps the turn and the radius grows.
 
 ## 2. Conventions
@@ -53,7 +53,7 @@ These come from the data's own signs, and they are easy to get backwards. **Ever
 ### 2.4 Time
 
 - **Physics runs at a fixed 120 Hz** with a fourth-order Runge-Kutta step. The FCS runs every physics step (the real digital F-16 runs at 64 Hz; faster is fine).
-- The render loop uses an accumulator: as many fixed steps as real time requires, at most 8 per frame, and dt clamped to 0.1 s. Rendering interpolates between the last two physics states, so 30, 60 and 120 Hz screens all look smooth. iPhone Safari usually gives 60 Hz, 30 Hz in Low Power Mode.
+- The render loop uses an accumulator: as many fixed steps as real time requires, at most 8 per frame; time beyond that is dropped rather than carried over. Rendering interpolates between the last two physics states, so 30, 60 and 120 Hz screens all look smooth. iPhone Safari usually gives 60 Hz, 30 Hz in Low Power Mode.
 - The simulation is **deterministic**: the same initial state and the same input sequence produce the same flight, bit for bit, on the same machine. Tests depend on it.
 
 ## 3. Structure of the simulation
@@ -105,14 +105,14 @@ Rigid body, 6 degrees of freedom, constant mass, flat non-rotating earth. Use th
    rdot = (c8·p − c2·r + c9·Hx)·q + q̄·S·b·(c4·Cl + c9·Cn)
    ```
    Use the rounded constants printed in the data file; the check case needs them.
-3. **Attitude**: q̇ = ½ · q ⊗ (0, p, q, r), renormalised after each step.
+3. **Attitude**: with the attitude quaternion Q (named so it can't be confused with pitch rate q), Q̇ = ½ · Q ⊗ (0, p, q, r), renormalised after each step.
 4. **Position**: rotate (u, v, w) into NED and integrate. ḣ = −(NED down velocity).
 
 **Mass.** Use the book's value, 1/m = 1.57e-3 slug⁻¹ (m ≈ 636.9 slug, 20,490 lb). Keep it in the aircraft data, not as a literal in the code. The real F-16C at half fuel is heavier (about 23,000–24,000 lb), but the book's engine is also weaker than an F-16C's, and the two cancel well enough that the model's turn performance lands inside the real aircraft's published bands (section 12.3). Changing the weight without changing the engine would break that. Weight is a decision for the owner, recorded in CLAUDE.md.
 
 **Centre of gravity.** xcg = 0.35 c̄, the data's reference. The jet is slightly unstable there; that is correct.
 
-**Outside the data.** The tables cover α −10..45° and β ±30°; beyond that they extrapolate linearly from the end segment, as the book does. The FCS keeps the jet well inside (section 8.5). If the jet does leave the range (a test can force it), the simulation must stay numerically stable and set an `outOfEnvelope` flag the debug overlay shows. It must never produce NaN.
+**Outside the data.** The tables cover α −10..45° and β ±30°; beyond that they extrapolate linearly from the end segment, as the book does. The FCS keeps the jet well inside (section 8.5). Hard pushes are expected to reach α of −10 to −12° (a −3 g push at 250 KCAS needs about −11°); that's fine. Beyond α < −15° or α > 45°, the simulation must stay numerically stable and set an `outOfEnvelope` flag the debug overlay shows. It must never produce NaN.
 
 **Ground.** When h ≤ 0 the flight ends in a crash state. There is no landing gear in this model.
 
@@ -151,7 +151,7 @@ The book's model, `docs/f16-data.md` section 4:
 - **Throttle 0..1 → commanded power 0..100%.** 0.77 is military power (MIL, 50%); above it is afterburner, reaching 100% at 1.0.
 - **Power lag.** The engine spools at a rate that depends on how far it has to go. Crossing between dry and afterburner uses fixed intermediate targets. This lag is real: going from idle to MIL takes seconds.
 - **Thrust tables** by Mach (rows) and altitude (columns), idle, MIL and max. Read the orientation warning in the data file: getting rows and columns backwards fails the check case.
-- **Clamp the table inputs** to 0..50,000 ft and Mach 0..2.2. Within 1.0..2.2 the book's linear extrapolation in Mach is kept.
+- **Clamp the table inputs** to 0..50,000 ft and Mach 0..2.2. Within 1.0..2.2 the book's linear extrapolation in Mach is kept (it gives about 17,500 lb at Mach 2.0, 40,000 ft). The drag rise in 5.2 is calibrated against exactly this thrust, so changing the clamp or the extrapolation means recalibrating ΔCD.
 
 The throttle slider maps to throttle 0..1. Put a detent at 0.77 so the pilot can feel MIL. Pushing past it lights the afterburner. The HUD shows the current power state, not the slider position, so the spool lag is visible.
 
@@ -196,27 +196,29 @@ lim  = 0.34·max(0, αeff − 15) + 0.92·max(0, αeff − 20)    // g
 neff = ncmd − lim              // full aft gives 9 g up to 15° AoA, 7.3 g at 20°, 1 g at 25°
 
 // C*-like error: pitch rate shapes the transient, g sets the steady state
-e    = neff − n_z − (400/32.17)·washout(q, 1.0 s)          // q in rad/s; 400 ft/s crossover
+e    = neff − n_z − (400/32.17)·washout(q, τw)             // q in rad/s; 400 ft/s crossover; τw 0.3–1.0 s
 
 // PI forward path, stability feedback, gains scheduled on dynamic pressure
-G    = clamp(300 / max(q̄, 40), 0.25, 6)
+G    = clamp(300 / max(q̄, 40), 0.25, 2)
 I   += Ki·e·dt                 // freeze when the stabilator is saturated in the direction e pushes
 el   = −G·(Kp·e + I)           // negative el is nose-up
-     + Kq·G·q_deg              // pitch damping
-     + Ka·(α_filt − α0)        // artificial static stability; α_filt = α through a 0.1 s lag
+     + Kq·G·q_deg              // pitch damping; q_deg = q in deg/s
+     + Ka·(α_filt − α0)        // artificial static stability; α_filt = α through a 0.1 s lag; α0 = 0
 el   = clamp(el, −25, 25)      // then the actuator
 ```
 
-Starting gains at q̄ = 300 psf: Kp ≈ 1.5 deg/g, Ki ≈ 3.0 deg/(g·s), Kq ≈ 0.3 deg per deg/s, Ka ≈ 0.5 deg/deg. An alternative to the 300/q̄ schedule, if it tunes better: compute the stabilator's pitch-moment effectiveness from the tables each step and divide by it. Either is acceptable; record which one was chosen.
+**Starting state.** At an air start, the jet is trimmed and the FCS must be too, or it starts with a jolt and loses height: set α_filt = α, every washout state to 0, the ncmd lag to 1, and I to the value that makes the law output the trim elevator, I = −(el_trim − Kq·G·q_deg − Ka·(α − α0))/G − Kp·e.
 
-The limiter schedule (9 g at 15°, 7.3 g at 20°, 1 g at 25°) and the 25° ceiling are the most important numbers in this section: they decide corner speed, instantaneous turn and the jet's low-speed behaviour.
+**Starting gains** at q̄ = 300 psf: Kp ≈ 1.5 deg/g, Ki ≈ 3.0 deg/(g·s), Kq ≈ 0.3 deg per deg/s, Ka ≈ 0.5 deg/deg, τw = 1.0 s. These are where tuning starts, not where it ends. An independent closed-loop check of these exact laws found that the starting gains build g too slowly (about 6 g after 1.5 s at 450 KCAS, because the pitch-rate term holds the error down while the washout decays). Faster gains (τw 0.3–0.5 s, Kp 3–4, Ki 15–20, Kq 1.2–1.5) built 9 g quickly but let AoA overshoot past 29° in a slow full-aft pull. **Fast g onset and a tight AoA limit pull against each other; tune them together** (tests 3, 4 and 5 in 12.2). The tuning freedoms are the gains, τw, and a pitch-rate or AoA-rate lead in the limiter path. An alternative to the 300/q̄ schedule, if it tunes better: compute the stabilator's pitch-moment effectiveness from the tables each step and divide by it. Record which was chosen and why.
+
+The limiter schedule and the 25° ceiling are the most important numbers in this section: they decide corner speed, instantaneous turn and the jet's low-speed behaviour. Provenance: the 15° onset and the 25° ceiling are well sourced (NASA TP-1538 and a former F-16 test pilot's public talk). The 20° breakpoint (7.3 g), the −4..+8 g request range and the pseudo-AoA magnitude come second-hand from TP-1538's figures via a flight-sim developer's notes: medium confidence.
 
 ### 8.3 Roll: roll-rate command about the velocity vector
 
 The stick commands **roll rate**, up to 308°/s, about the velocity vector (stability axis), so at high AoA the nose slices around the flight path rather than the jet rolling about its own nose.
 
 ```
-// Stick to roll-rate request. Force F = 17·|x| lb; gradient bands from NASA sidestick data
+// Stick to roll-rate request. Force F = 16·|x| lb above breakout; gradient bands from NASA sidestick data
 p_cmd = sign(x) · band(F)       // 5 (°/s)/lb to 2 lb, 15 to 8 lb, 30 above
                                 //   → 10°/s at 2 lb, 100°/s at 8 lb, capped by pmax around 15 lb
 
@@ -230,7 +232,7 @@ p_s   = p·cosα + r·sinα         // stability-axis roll rate
 ail   = −Kr·Gr·(p_cmd − p_s)    // negative because +ail rolls left; Gr = clamp(300/q̄, 0.3, 5)
 ```
 
-Starting gain Kr ≈ 0.12 deg per deg/s at q̄ = 300 psf. Target roll-mode time constant 0.3–0.5 s. Released, the stick commands zero roll rate, so the jet holds its bank.
+Starting gain Kr ≈ 1.0 deg per deg/s at q̄ = 300 psf. (The closed-loop check found 0.12, a figure from early YF-16 work, gave only about 180°/s at full stick.) A proportional-only loop leaves a steady-state error of about 8% at 350 KCAS; add a small integrator or a feed-forward term if full-stick rate falls short of 270°/s. Target roll-mode time constant 0.3–0.5 s; the 0.1 s prefilter and the 80°/s aileron rate limit set most of it. Released, the stick commands zero roll rate, so the jet holds its bank.
 
 ### 8.4 Yaw: automatic coordination, no pedals
 
@@ -240,29 +242,29 @@ The pilot has no rudder control. The FCS keeps the ball centred, as on the real 
 r_s  = r·cosα − p·sinα                   // stability-axis yaw rate
 rdr  = K_ARI(α, M)·ail                   // aileron-rudder interconnect: same sign as aileron
      + Kyd·washout(r_s, 1.0 s)·57.3      // yaw damper: opposes unwanted yaw
-     + Kny·n_y                           // lateral-acceleration feedback: centres the ball
+     + Kny·Gy·n_y                        // lateral-acceleration feedback: centres the ball
 rdr  = clamp(rdr, −30, 30)
 ```
 
-K_ARI rises with AoA (starting shape: 0 at 0°, 0.3 at 10°, 0.8 at 20°, 1.2 at 30°) and falls with Mach. Starting values: Kyd ≈ 0.5–1 deg per deg/s, Kny ≈ 20 deg/g. Turn the interconnect off above 35° AoA. The signs above follow 2.3 (a right roll needs negative aileron and negative rudder); prove them with tests.
+K_ARI rises with AoA (starting shape: 0 at 0°, 0.3 at 10°, 0.8 at 20°, 1.2 at 30°) and falls with Mach. Starting values: Kyd ≈ 0.75 deg per deg/s, Kny ≈ 20 deg/g at q̄ = 300 psf, with **Gy = clamp(300/q̄, 0.2, 2)**. The n_y loop must be scheduled: the rudder's own side force feeds n_y, so an unscheduled gain makes the loop unstable at high speed (the check saw sideslip run to 8–16° at 600–700 KCAS). Turn the interconnect off above 35° AoA. The signs above follow 2.3 (a right roll needs negative aileron and negative rudder); prove them with tests.
 
 If tuning the interconnect proves impractical, an acceptable fallback is a yaw-rate command, r_cmd = p_s·sinα + (g/V)·sinφ·cosθ, tracked by the rudder. That is not the F-16's structure, so record the change as a departure if it's used.
 
 ### 8.5 Protection
 
 - The limiter in 8.2 keeps AoA at or below about 25° in normal flying. The pilot cannot stall the jet with the stick alone.
-- **Backstop:** if α exceeds 30°, command full nose-down stabilator until it's back below 25°. A NASA YF-16 study used exactly this backup. It also keeps the model inside its data.
+- **Backstop:** if α exceeds 30°, command full nose-down stabilator until it's back below 25°. A NASA YF-16 study used exactly this backup. It also keeps the model inside its data. **Hold the pitch integrator while the backstop is active**, and when it releases, re-initialise I so the law's output equals the current stabilator position. Without this the integrator winds up during the backstop and kicks the nose straight back up; the check saw the jet tumble.
 - The real F-16 can still depart in extreme cases (very aggressive rolls at very low speed), into a deep stall near 60° AoA. This model has no data there, so departures are out of scope and the backstop prevents them (section 13).
 
 ### 8.6 What not to add
 
 - **No bank or climb compensation** in the pitch command. Released in a 60° bank, the jet holds 1 g and the nose drops; the pilot has to pull to hold altitude in a turn. That is how the real jet flies.
 - **No altitude, heading or bank hold.** Those are autopilot functions.
-- **No stall warning horn or shaker.** The F-16 has none; the limiter is the protection.
+- **No stick shaker.** The F-16 has none; the limiter is the protection.
 
 ### 8.7 Tuning targets
 
-Tune the gains to these, across the envelope (at least sea level, 15,000 ft and 30,000 ft, 200–600 KCAS), then store the scheduled gains as data:
+Tune the gains to these across the envelope (at least sea level, 15,000 ft and 30,000 ft, 200–600 KCAS), **and** with full-aft-stick entries down to 100 KCAS, where the limiter must hold α at or below 26°. Store the scheduled gains as data:
 
 - Pitch: short-period frequency 4–6 rad/s, damping ratio 0.6–0.8. A g step reaches 90% in 0.5–1.0 s with less than 10% overshoot.
 - Roll: roll-mode time constant 0.3–0.5 s; full-stick rate within 270–330°/s at mid speed.
@@ -287,7 +289,7 @@ From the atmosphere module (pressure p, temperature, density), with sea-level va
 
 Sound comes in a later milestone. Until then the cues are visual, and each one is driven by the model, never by a timer or a script. Starting values; tune them on the phone.
 
-- **Buffet.** A small, high-frequency camera shake that starts around 12° AoA and grows as AoA approaches the 25° limit, scaled by dynamic pressure (stronger when fast). It tells the pilot the limiter is near before the HUD does.
+- **Buffet** (a game cue; public sources don't document F-16 buffet onset). A small, high-frequency camera shake that starts around 12° AoA and grows as AoA approaches the 25° limit, scaled by dynamic pressure (stronger when fast). It tells the pilot the limiter is near before the HUD does.
 - **Load.** The chase camera sags slightly toward the belly as g builds, so a 9 g pull looks heavier than a 3 g one.
 - **Limiter.** When the pilot pulls past what the limiter allows, the HUD's g and AoA readouts stop climbing while the stick indicator (part of the UI, not the HUD) keeps moving. Nothing else is needed: that plateau is what an F-16 pilot feels.
 - **Energy.** Speed bleeds in a hard turn and the AoA needed for the same g rises; both are visible on the HUD.
@@ -313,7 +315,7 @@ function upInScreen(e) {
   return { x: c * x - s * y, y: s * x + c * y, z };
 }
 // pitch = atan2(u.z, hypot(u.x, u.y)) − pitch at Recenter
-// roll  = atan2(u.x, u.y)
+// roll  = atan2(u.x, u.y) − roll at Recenter
 // confidence = hypot(u.x, u.y): fades to 0 when the screen faces the sky or the floor
 ```
 
@@ -324,9 +326,9 @@ This was checked in simulation, not on a phone: it is continuous through upright
 - **Pitch:** tilting the top edge toward you is a pull (nose up), like a yoke. Full force at 25° of tilt from neutral.
 - **Roll:** turning the phone like a steering wheel. Clockwise rolls right. Full force at 30°.
 - **Deadband** 2° in pitch and 1.5° in roll, standing in for the real stick's breakout force. Beyond it, tilt maps linearly to x = −1..+1; the FCS does the shaping.
-- **Smoothing:** a first-order filter with τ ≈ 60 ms, to remove sensor noise and hand tremor without adding noticeable lag. Total input latency should stay under 50 ms.
+- **Smoothing:** a first-order filter with τ ≈ 20 ms (about 8 Hz), to remove sensor noise. Sensor events arrive at about 60 Hz, so total input latency stays under 50 ms. Raise τ only if hand tremor shows on the phone, and record the latency cost.
 - **Confidence:** fade roll authority to zero as confidence drops below 0.3.
-- **Recenter controls** captures a new neutral. It's in the pause menu, and it also happens on Start and after any screen rotation.
+- **Recenter controls** captures a new neutral pitch and roll. It's in the pause menu, and it also happens on Start and after any screen rotation.
 
 ### 11.3 Throttle
 
@@ -338,7 +340,7 @@ Three layers. All run headless in Node from the command line; none needs a brows
 
 ### 12.1 The model is the book's model
 
-- **Book check case** (`docs/f16-data.md` section 6, Table 3.5-2): all 13 state derivatives within 1e-5 relative. Feed surface positions directly, bypassing actuators and FCS. Build the state from the book's Euler angles; compute Euler-angle rates in the test from p, q, r.
+- **Book check case** (`docs/f16-data.md` section 6, Table 3.5-2): all 13 state derivatives within 1e-5 relative. Feed surface positions directly, bypassing actuators and FCS. Build the state from the book's Euler angles; compute Euler-angle rates in the test from p, q, r. Convert the body-axis accelerations to the book's states with VTdot = (u·u̇ + v·v̇ + w·ẇ)/VT, α̇ = (u·ẇ − w·u̇)/(u² + w²), β̇ = (VT·v̇ − v·VTdot)·cosβ/(u² + w²).
 - **Level-flight trims** (Table 3.6-2): a trim solver finds throttle, α and elevator for wings-level 1 g flight at sea level, xcg 0.35. All 16 rows within: throttle 0.001, α 0.02° (0.15° below 200 ft/s), elevator 0.01° (0.05° below 200 ft/s).
 - **Engine**: thrust at the table's grid points is exact; power-lag rates match the book's PDOT for a few hand-picked cases.
 - **Frames**: the conversion tests of section 2.2.
@@ -346,20 +348,24 @@ Three layers. All run headless in Node from the command line; none needs a brows
 
 ### 12.2 The FCS behaves like an F-16
 
-Each test flies the full simulation (FCS, actuators, engine) from an air start with a scripted stick and throttle sequence, then checks:
+Each test flies the full simulation (FCS, actuators, engine) from a trimmed 1 g air start at 10,000 ft unless stated, with a scripted stick and throttle sequence, then checks:
 
 | # | Manoeuvre | Pass when |
 |---|---|---|
 | 1 | Wings level, stick released, 10 s | n_z within 1 ± 0.05 after 2 s; no divergence in pitch |
 | 2 | Throttle from MIL to idle, stick released, 20 s | speed falls, α rises, n_z stays 1 ± 0.1, no pitch oscillation |
-| 3 | Full aft stick at 450 KCAS, 10,000 ft | n_z reaches 9 ± 0.3 within 1.5 s; never exceeds 9.5 |
-| 4 | Full aft stick held as speed bleeds | α never exceeds 26°; settles near 25° at low speed with n_z near 1 |
-| 5 | Full aft stick at 200 KCAS, 10,000 ft | α settles at 24–25°, n_z about 3, far below 9 |
+| 3 | Full aft stick at 450 KCAS | n_z ≥ 8.0 within 1.5 s and 9 ± 0.3 within 3 s; never above 9.5 |
+| 4 | Idle, level. A scripted test pilot holds altitude with pitch stick, allowed to reach full aft; run until 90 KCAS | α never above 26°; at the end α 24–25.5° and n_z 0.9–1.1 while the jet sinks |
+| 5 | Full aft stick at 200 KCAS | peak n_z 2.7–3.5; never above 4; α never above 26°; from 1.5 s on, α 22–25.5° |
 | 6 | Full forward stick at 450 KCAS | n_z reaches −3 ± 0.3, never below −3.5 |
 | 7 | Full right stick, 1 g, 350 KCAS | peak roll rate 270–330°/s; |β| < 3° throughout a 360° roll |
-| 8 | Full right stick while holding about 20° AoA | roll rate reduced by the limiter (about 170–220°/s); |β| < 3° |
-| 9 | Stick released in a 60° bank | bank holds within 5° over 10 s; nose drops (no bank compensation) |
-| 10 | Any input sequence, including random stick for 60 s | no NaN; α stays below 30° |
+| 8 | Full right stick at 1 g and about 20° AoA (about 120 KCAS, sea level) | roll rate is aileron-limited, 80–140°/s; α stays at or below 25°; |β| < 5° |
+| 9 | Stick released in a 60° bank | bank holds within 8° over 10 s; nose drops (no bank compensation) |
+| 10 | Any input sequence, including random stick for 60 s, at any speed from 100 to 700 KCAS | no NaN; α stays below 32° (the backstop engages at 30°) |
+
+Also unit-test the roll limiter on its own: pmax = 279°/s at α 5° and q̄ 167 psf; 168°/s at α 25° and q̄ 38.5 psf; 88°/s at α 25°, q̄ 38.5 psf and el +25°.
+
+Tests 3, 4 and 5 pull against each other (8.2). If they can't all pass, stop and report the trade-off with numbers rather than loosening a test.
 
 ### 12.3 Performance lands in the real F-16's bands
 
