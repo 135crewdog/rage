@@ -16,7 +16,7 @@ import assert from 'node:assert/strict';
 const require = createRequire(import.meta.url);
 const ROOT = resolve(fileURLToPath(new URL('../..', import.meta.url)));
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json',
-  '.webmanifest': 'application/manifest+json', '.png': 'image/png', '.svg': 'image/svg+xml' };
+  '.webmanifest': 'application/manifest+json', '.png': 'image/png', '.svg': 'image/svg+xml', '.glb': 'model/gltf-binary' };
 
 function serve() {
   const server = createServer(async (req, res) => {
