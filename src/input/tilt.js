@@ -16,10 +16,11 @@ export const MAPPING = {
   rollDeadband: 1.5,
   filterTau: 0.020,     // s, first-order smoothing of the sensor
   confidenceFade: 0.3,  // roll authority fades to zero as confidence drops below this
-  // Signs to be confirmed on the iPhone with the debug overlay: +1 means
-  // "top edge toward you is a pull" and "clockwise is right".
-  pitchSign: 1,
-  rollSign: 1,
+  // Signs confirmed on the iPhone (milestone 1c): with the maths above, the
+  // raw pitch and roll both come out opposite to the pilot's sense, so both
+  // are flipped here. Top edge toward you is a pull; clockwise is right.
+  pitchSign: -1,
+  rollSign: -1,
 };
 
 // World "up" in screen coordinates (x right, y up the screen, z out of the
