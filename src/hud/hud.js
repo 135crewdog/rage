@@ -5,7 +5,8 @@
 // The HUD is conformal with the view: the flight-path marker, the waterline
 // and the pitch ladder are world directions projected through the chase
 // camera, so the marker sits on the point the jet is flying toward and the
-// ladder rolls and scales with the camera.
+// ladder rolls and scales with the camera. Straight up and straight down get
+// the F-16's zenith and nadir symbols when the ladder's window reaches them.
 
 const GREEN = '#7cff4f';
 const OUTLINE = 'rgba(0,0,0,0.75)';
@@ -29,6 +30,15 @@ function rightOf(headingDeg, pitchDeg) {
   const v = [d[0] - e * Math.sin(h), d[1] + e * Math.cos(h), d[2]];
   const m = Math.hypot(v[0], v[1], v[2]);
   return [v[0] / m, v[1] / m, v[2] / m];
+}
+
+// Which of the two apex symbols the ladder's window has reached, if either:
+// the zenith when straight up is within LADDER_RANGE of the nose, the nadir
+// when straight down is.
+export function apexFor(pitchDeg) {
+  if (pitchDeg >= 90 - LADDER_RANGE) return 'zenith';
+  if (pitchDeg <= -90 + LADDER_RANGE) return 'nadir';
+  return null;
 }
 
 export function createHud(canvas) {
@@ -59,6 +69,30 @@ export function createHud(canvas) {
     ctx.fillStyle = GREEN; ctx.fillText(s, x, y);
   }
   function dashed(on) { ctx.setLineDash(on ? [8, 6] : []); }
+
+  // The F-16's zenith symbol: an eight-pointed star with the lowest point
+  // drawn long as a tail toward the bottom of the display.
+  function zenith(x, y, r) {
+    stroke(() => {
+      for (let k = 0; k <= 16; k++) {
+        const a = -Math.PI / 2 + (Math.PI * 2 * (k % 16)) / 16;
+        const rr = k % 2 ? r * 0.6 : k % 16 === 8 ? r * 2 : r * 1.25;
+        const px = x + rr * Math.cos(a), py = y + rr * Math.sin(a);
+        if (k === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      }
+    });
+  }
+  // The nadir symbol: a circle hatched with horizontal lines, a short tail up.
+  function nadir(x, y, r) {
+    stroke(() => {
+      ctx.moveTo(x + r, y); ctx.arc(x, y, r, 0, Math.PI * 2);
+      for (const f of [-0.75, -0.5, -0.25, 0, 0.25, 0.5, 0.75]) {
+        const half = r * Math.sqrt(1 - f * f);
+        ctx.moveTo(x - half, y + f * r); ctx.lineTo(x + half, y + f * r);
+      }
+      ctx.moveTo(x, y - r); ctx.lineTo(x, y - r * 2);
+    });
+  }
 
   // air: the airdata object; power: { label, percent }; project: a NED
   // direction → { x, y, visible } on the screen; velocity and nose: unit NED
@@ -117,6 +151,13 @@ export function createHud(canvas) {
         text(String(Math.abs(p)), c.x - ux * (half + 14), c.y - uy * (half + 14), 'center', 12);
         text(String(Math.abs(p)), c.x + ux * (half + 14), c.y + uy * (half + 14), 'center', 12);
       }
+    }
+    // straight up and straight down, once the ladder's window reaches them:
+    // conformal like the bars, but upright on the screen rather than rolling
+    const apex = apexFor(air.pitch);
+    if (apex) {
+      const c = project(apex === 'zenith' ? [0, 0, -1] : [0, 0, 1]);
+      if (c.visible) (apex === 'zenith' ? zenith : nadir)(c.x, c.y, 16);
     }
     ctx.restore();
 
