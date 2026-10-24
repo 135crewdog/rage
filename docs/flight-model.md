@@ -289,7 +289,7 @@ Sound comes in a later milestone. Until then the cues are visual, and each one i
 
 - **Buffet.** A small, high-frequency camera shake that starts around 12° AoA and grows as AoA approaches the 25° limit, scaled by dynamic pressure (stronger when fast). It tells the pilot the limiter is near before the HUD does.
 - **Load.** The chase camera sags slightly toward the belly as g builds, so a 9 g pull looks heavier than a 3 g one.
-- **Limiter.** When the pilot pulls past what the limiter allows, the input indicator shows the stick past the point where g stops rising, and the g and AoA readouts stop climbing. Nothing else is needed: that plateau is what an F-16 pilot feels.
+- **Limiter.** When the pilot pulls past what the limiter allows, the HUD's g and AoA readouts stop climbing while the stick indicator (part of the UI, not the HUD) keeps moving. Nothing else is needed: that plateau is what an F-16 pilot feels.
 - **Energy.** Speed bleeds in a hard turn and the AoA needed for the same g rises; both are visible on the HUD.
 
 ## 11. Pilot input: tilt to stick
@@ -330,7 +330,7 @@ This was checked in simulation, not on a phone: it is continuous through upright
 
 ### 11.3 Throttle
 
-A vertical slider along one side of the screen, driven by pointer events with pointer capture, keeping its value when released. A detent at MIL (0.77): the thumb has to move past a small gap to enter afterburner.
+A minimal vertical slider on the left edge of the screen, part of the UI rather than the HUD, driven by pointer events with pointer capture, keeping its value when released. A detent at MIL (0.77): the thumb has to move past a small gap to enter afterburner.
 
 ## 12. Acceptance tests
 
