@@ -3,6 +3,7 @@ name: Tests
 on:
   push:
   pull_request:
+  workflow_call:
 
 jobs:
   test:
@@ -13,3 +14,21 @@ jobs:
         with:
           node-version: 22
       - run: node --test
+
+  browser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # Playwright is a developer tool, installed here and never saved to the repo
+      - run: npm install --no-save playwright@1.63.0
+      - run: npx playwright install --with-deps chromium
+      - run: node tests/browser/smoke.js shots
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: screenshots
+          path: shots
+          if-no-files-found: ignore

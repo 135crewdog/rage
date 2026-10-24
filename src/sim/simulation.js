@@ -77,6 +77,11 @@ export class Simulation {
     return this.fcs.backstop;
   }
 
+  // True while the AoA limiter is taking g away from what the stick asks.
+  get limited() {
+    return this.fcs.limiting > 0.05 || this.fcs.backstop;
+  }
+
   // The engine's power state for the HUD: IDLE, MIL, or AB with a percentage.
   get powerState() {
     const pow = this.state[IX.POW];
@@ -84,6 +89,19 @@ export class Simulation {
     if (pow > 49) return { label: 'MIL', percent: 0 };
     return { label: 'IDLE', percent: 0 };
   }
+}
+
+// The fixed-step clock of docs/flight-model.md 2.4. Given the time carried
+// over from the last frame and the time since it, returns how many physics
+// steps to take (at most maxSteps; time beyond that is dropped, not carried)
+// and the time left over, which the renderer uses as the interpolation
+// fraction between the last two states.
+export function stepsFor(carry, elapsed, maxSteps = 8, dt = DT) {
+  let acc = carry + Math.max(0, elapsed);
+  let steps = Math.floor(acc / dt + 1e-9);     // 1/60 is two steps of 1/120, floating point or not
+  if (steps > maxSteps) { steps = maxSteps; acc = maxSteps * dt; }
+  acc -= steps * dt;
+  return { steps, carry: acc, fraction: acc / dt };
 }
 
 export { DT, tgear };
