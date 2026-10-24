@@ -89,7 +89,9 @@ function solveLinear(cols, b, n) {
 // Generic steady-flight trim. `fixed` holds the known quantities (vt, h,
 // throttle, alpha, el, ail, rdr, phi, psidot, nz, xcg); `free` names the
 // unknowns with starting guesses; `zero` lists the residuals to drive to zero,
-// from: udot vdot wdot pdot qdot rdot nz (nz means n_z − fixed.nz).
+// from: udot vdot wdot pdot qdot rdot, nz (n_z − fixed.nz), and normal (the
+// acceleration normal to the flight path in the plane of symmetry,
+// ẇ·cosα − u̇·sinα, which is zero when α holds steady while speed may bleed).
 export function trim(fixed, free, zero) {
   const names = Object.keys(free);
   const key = { udot: IX.U, vdot: IX.V, wdot: IX.W, pdot: IX.P, qdot: IX.Q, rdot: IX.R };
@@ -100,7 +102,11 @@ export function trim(fixed, free, zero) {
   };
   const f = (vals) => {
     const { xdot, aux } = build(vals);
-    return zero.map((z) => (z === 'nz' ? aux.nz - fixed.nz : xdot[key[z]]));
+    return zero.map((z) => {
+      if (z === 'nz') return aux.nz - fixed.nz;
+      if (z === 'normal') return xdot[IX.W] * Math.cos(aux.alpha) - xdot[IX.U] * Math.sin(aux.alpha);
+      return xdot[key[z]];
+    });
   };
   const sol = newton(f, names.map((k) => free[k]));
   const out = { ...fixed };
@@ -129,14 +135,15 @@ export function trimSustainedTurn(vt, h, throttle = 1, guess = {}) {
   );
 }
 
-// A level turn at a given load factor, thrust free (speed may be bleeding):
-// the instantaneous turn. Unknowns α, el, φ, ail, rdr, ψ̇.
+// A level turn at a given load factor with speed free to bleed: the
+// instantaneous turn. Along the flight path the jet may decelerate; normal to
+// it, and in every rotation, it is steady. Unknowns α, el, φ, ail, rdr, ψ̇.
 export function trimTurnAtLoad(vt, h, nz, guess = {}) {
   const phi0 = Math.acos(Math.min(1, 1 / Math.max(nz, 1)));
   return trim(
-    { vt, h, throttle: 1, nz },
+    { vt, h, throttle: guess.throttle ?? 1, nz },
     { alpha: guess.alpha ?? 8, el: guess.el ?? -2, phi: guess.phi ?? phi0, ail: 0, rdr: 0, psidot: guess.psidot ?? 0.2 },
-    ['vdot', 'wdot', 'pdot', 'qdot', 'rdot', 'nz'],
+    ['vdot', 'normal', 'pdot', 'qdot', 'rdot', 'nz'],
   );
 }
 

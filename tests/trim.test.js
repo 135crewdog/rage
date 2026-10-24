@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { trimLevel, trimSustainedTurn, trimTurnAtLoad } from '../src/sim/trim.js';
 import { airdata } from '../src/sim/airdata.js';
-import { step } from '../src/sim/dynamics.js';
+import { step, derivative, IX, N } from '../src/sim/dynamics.js';
 
 // Table 3.6-2: VT (ft/s), throttle, α (deg), el (deg). Sea level, xcg 0.35.
 const BOOK = [
@@ -45,7 +45,7 @@ test('trimmed level flight reads 1 g, and a turn at 1 g is level flight', () => 
   assert.ok(Math.abs(ad.nz - Math.cos(level.alpha * Math.PI / 180)) < 1e-9);
   assert.ok(Math.abs(ad.nz - 1) < 0.01);
   assert.ok(Math.abs(ad.gamma) < 1e-6, `gamma ${ad.gamma}`);
-  const turn = trimTurnAtLoad(500, 10000, level.aux.nz + 1e-6);
+  const turn = trimTurnAtLoad(500, 10000, level.aux.nz + 1e-6, { throttle: level.throttle });
   assert.ok(turn.ok);
   assert.ok(Math.abs(turn.alpha - level.alpha) < 1e-3);
   assert.ok(Math.abs(turn.el - level.el) < 1e-3);
@@ -68,4 +68,25 @@ test('a sustained turn at full throttle holds speed and height with the ball cen
   const turned = ((a1.heading - a0.heading) % 360 + 360) % 360;
   assert.ok(Math.abs(turned - t.psidot * 3 * 180 / Math.PI) < 1, `turned ${turned}`);
   console.log(`  sustained at 700 ft/s SL: ${(t.psidot * 180 / Math.PI).toFixed(2)} °/s, ${t.aux.nz.toFixed(2)} g, α ${t.alpha.toFixed(2)}°, bank ${(t.phi * 180 / Math.PI).toFixed(1)}°`);
+});
+
+test('a turn at a given load factor holds α and the turn geometry while speed bleeds', () => {
+  const t = trimTurnAtLoad(530, 0, 7.3);
+  assert.ok(t.ok, `residual ${t.residual}`);
+  const xd = new Float64Array(N);
+  derivative(t.state, t.controls, xd);
+  const u = t.state[IX.U], w = t.state[IX.W];
+  const alphadot = (u * xd[IX.W] - w * xd[IX.U]) / (u * u + w * w);
+  assert.ok(xd[IX.U] < -5, `speed should be bleeding, udot ${xd[IX.U]}`);
+  assert.ok(Math.abs(alphadot) < 1e-8, `alphadot ${alphadot * 180 / Math.PI} °/s`);
+  assert.ok(Math.abs(t.aux.nz - 7.3) < 1e-8);
+  // flown forward for 1 s the bank, g and α stay put and the height holds
+  let x = t.state;
+  for (let i = 0; i < 120; i++) x = step(x, t.controls).state;
+  const a0 = airdata(t.state, t.aux), a1 = airdata(x);
+  assert.ok(a1.ktas < a0.ktas - 5, 'speed bled');
+  assert.ok(Math.abs(a1.alpha - a0.alpha) < 1.0, `α ${a0.alpha} → ${a1.alpha}`);
+  assert.ok(Math.abs(a1.roll - a0.roll) < 3, `bank ${a0.roll} → ${a1.roll}`);
+  assert.ok(Math.abs(a1.altitude - a0.altitude) < 20, `height ${a0.altitude} → ${a1.altitude}`);
+  console.log(`  7.3 g at 530 ft/s SL: ${(t.psidot * 180 / Math.PI).toFixed(2)} °/s, α ${t.alpha.toFixed(2)}°, decelerating ${(-xd[IX.U]).toFixed(1)} ft/s²`);
 });
