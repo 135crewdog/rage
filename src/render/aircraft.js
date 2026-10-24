@@ -107,8 +107,8 @@ const BODY = [
   [4.85, [0.00, 0.61, 0.18, 0.59, 0.35, 0.52, 0.49, 0.40, 0.62, 0.27, 0.89, 0.15, 1.05, -0.08, 0.64, -0.25, 0.59, -0.42, 0.51, -0.58, 0.37, -0.71, 0.19, -0.76, 0.00, -0.77]],
   [5.68, [0.00, 0.71, 0.18, 0.69, 0.35, 0.62, 0.49, 0.50, 0.60, 0.35, 0.85, 0.24, 1.05, 0.01, 0.63, -0.16, 0.58, -0.33, 0.49, -0.48, 0.35, -0.61, 0.18, -0.67, 0.00, -0.69]],
   [6.33, [0.00, 0.57, 0.15, 0.56, 0.29, 0.50, 0.41, 0.41, 0.51, 0.29, 0.56, 0.15, 0.58, -0.00, 0.56, -0.15, 0.50, -0.29, 0.41, -0.41, 0.29, -0.50, 0.15, -0.55, 0.00, -0.57]],
-  [6.85, [0.00, 0.57, 0.15, 0.55, 0.29, 0.49, 0.41, 0.40, 0.50, 0.28, 0.56, 0.14, 0.58, -0.01, 0.56, -0.16, 0.50, -0.30, 0.41, -0.42, 0.29, -0.51, 0.15, -0.57, 0.00, -0.59]],
-  [7.23, [0.00, 0.49, 0.13, 0.47, 0.25, 0.42, 0.35, 0.34, 0.43, 0.24, 0.48, 0.12, 0.50, -0.01, 0.48, -0.14, 0.43, -0.26, 0.35, -0.36, 0.25, -0.44, 0.13, -0.49, 0.00, -0.51]],
+  [6.85, [0.00, 0.51, 0.14, 0.49, 0.27, 0.44, 0.38, 0.36, 0.47, 0.25, 0.53, 0.13, 0.55, -0.01, 0.53, -0.15, 0.47, -0.27, 0.38, -0.38, 0.27, -0.46, 0.14, -0.51, 0.00, -0.53]],
+  [7.23, [0.00, 0.42, 0.12, 0.40, 0.23, 0.36, 0.32, 0.29, 0.40, 0.20, 0.44, 0.10, 0.46, -0.01, 0.44, -0.12, 0.40, -0.22, 0.32, -0.31, 0.23, -0.38, 0.12, -0.42, 0.00, -0.44]],
 ];
 
 // Strake and wing as one planform: the strake's edge curves out from the
@@ -138,7 +138,7 @@ export function createAircraft() {
     return 0;
   });
   jet.add(new THREE.Mesh(body, [skin, glass, black]));
-  const exhaust = new THREE.Mesh(new THREE.CircleGeometry(0.48, 20), black);
+  const exhaust = new THREE.Mesh(new THREE.CircleGeometry(0.44, 20), black);
   exhaust.position.z = 7.2;
   jet.add(exhaust);
 
@@ -167,14 +167,16 @@ export function createAircraft() {
   jet.add(new THREE.Mesh(loft(fin), skin));
 
   // Dorsal fairing: the spine rising from behind the canopy into the fin's
-  // root, running on under the fin to the blunt pod behind the rudder.
-  // [z, half-width, top]
+  // root, running on under the fin to the blunt pod behind the rudder. Its
+  // base is buried in the body until the body falls away to the nozzle;
+  // from there the pod's flat underside overhangs the nozzle with a gap.
+  // [z, half-width, top, base]
   const DORSAL = [
-    [2.10, 0.20, 0.66], [2.60, 0.24, 0.78], [3.15, 0.27, 0.89], [3.75, 0.29, 1.02], [4.15, 0.30, 1.10],
-    [5.00, 0.30, 1.04], [6.00, 0.28, 0.96], [6.45, 0.27, 1.00], [6.70, 0.27, 1.14], [7.05, 0.27, 1.17],
-    [7.25, 0.22, 1.08], [7.32, 0.08, 0.92],
+    [2.10, 0.20, 0.66, 0.30], [2.60, 0.24, 0.78, 0.30], [3.15, 0.27, 0.89, 0.30], [3.75, 0.29, 1.02, 0.30],
+    [4.15, 0.30, 1.10, 0.30], [5.00, 0.30, 1.04, 0.30], [6.00, 0.28, 0.96, 0.62], [6.45, 0.27, 1.00, 0.63],
+    [6.70, 0.27, 1.14, 0.64], [7.00, 0.27, 1.16, 0.64], [7.12, 0.20, 1.05, 0.66], [7.17, 0.06, 0.90, 0.70],
   ];
-  jet.add(new THREE.Mesh(loft(DORSAL.map(([z, hw, top]) => domeRing(z, hw, 0.30, top))), skin));
+  jet.add(new THREE.Mesh(loft(DORSAL.map(([z, hw, top, base]) => domeRing(z, hw, base, top))), skin));
 
   // Ventral fins, canted outward.
   for (const sx of [1, -1]) {
