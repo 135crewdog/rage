@@ -4,7 +4,7 @@
 
 import { MIL_THROTTLE } from '../sim/engine.js';
 
-const GAP = 0.06;   // fraction of the track the thumb must cross past MIL
+const GAP = 0.12;   // fraction of the track the thumb must cross past MIL (doubled after the first flights)
 
 // Pointer position along the track (0 bottom .. 1 top) → throttle 0..1.
 export function throttleFromPosition(pos) {
