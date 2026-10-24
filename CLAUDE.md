@@ -27,7 +27,7 @@ The owner's design philosophy applies to everything a person sees or touches: ht
 | 1a | Simulation core: atmosphere, aero, engine, actuators, equations of motion, trim solver, air data. All of `docs/flight-model.md` section 12.1 and 12.3 passing. No visuals. | Done |
 | 1b | Flight control system, tuned. Section 12.2 passing. A headless flight script that flies a manoeuvre and prints a time history, so tuning is visible. | Done |
 | 1c | The app: world, aircraft, camera, HUD, UI, tilt, throttle, menus, PWA, Pages. Ends with the owner flying it on the iPhone. | Flown. Tilt, crash, update prompt and pause-when-hidden confirmed; the wake lock still to confirm |
-| 1d | **Second look.** The four items under "Next round" below, from the owner's first flights. | In progress: 2 done |
+| 1d | **Second look.** The four items under "Next round" below, from the owner's first flights. | In progress: 3 done |
 
 Later milestones (terrain, sound, a bandit to dogfight) get specified when milestone 1 is done.
 
@@ -46,7 +46,7 @@ icons/                    app icons
 src/main.js               composition root: wires sim, input, renderer, HUD and UI together
 src/sim/                  the simulation: pure JS, no DOM, no three.js, no browser APIs
 src/sim/data/             the F-16 tables as JS modules, re-keyed from docs/f16-data.md
-src/input/                tilt and throttle; browser-facing, maths kept pure and tested
+src/input/                tilt and look-around; browser-facing, maths kept pure and tested
 src/render/               all three.js code: world, aircraft, camera, frame conversions
 src/hud/                  the HUD
 src/ui/                   throttle, stick indicator, pause button, screens, settings
@@ -71,7 +71,7 @@ tests/browser/smoke.js    loads the app in headless Chromium and flies a few sec
 
 ## Camera
 
-A chase camera behind and slightly above the jet, like vazgriz's flight sim (his series is MIT-licensed and a good reference for the camera and HUD: https://github.com/vazgriz/FlightSim). It follows the jet's attitude smoothly enough not to jitter, and stays close enough that the jet's own motion reads clearly. The cues in `docs/flight-model.md` section 10 (buffet shake, load sag) are applied to it. No other camera views in milestone 1.
+A chase camera behind and slightly above the jet, like vazgriz's flight sim (his series is MIT-licensed and a good reference for the camera and HUD: https://github.com/vazgriz/FlightSim). It follows the jet's attitude smoothly enough not to jitter, and stays close enough that the jet's own motion reads clearly. The cues in `docs/flight-model.md` section 10 (buffet shake, load sag) are applied to it. **Look-around:** a finger dragged on the view, outside the controls, swings the camera around the jet in two axes, dragging the world (drag right, look left; drag down, look up), and the view eases back when the finger lifts; tilt and throttle keep working meanwhile. The HUD's numbers stay put and its conformal symbols are seen only when the view includes them. No other camera views in milestone 1.
 
 ## HUD
 

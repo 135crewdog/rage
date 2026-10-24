@@ -98,3 +98,25 @@ test('the smoothing filter has a 20 ms time constant and tolerates a bad dt', ()
   assert.equal(smooth(0.3, 1, 0), 1);
   assert.equal(smooth(0.3, 1, NaN), 1);
 });
+
+// ---- look-around (src/input/look.js) ----
+import { createLook, DEG_PER_PX, YAW_MAX, PITCH_MAX } from '../src/input/look.js';
+
+test('look-around: a drag swings the view, dragging the world; it eases back when released', () => {
+  const look = createLook();
+  look.drag(100, 0);
+  assert.equal(look.yaw, 0, 'nothing moves until a finger is down');
+  look.begin();
+  look.drag(100, 40);
+  near(look.yaw, 100 * DEG_PER_PX, 1e-9, 'drag right looks left (positive yaw)');
+  near(look.pitch, 40 * DEG_PER_PX, 1e-9, 'drag down looks up (positive pitch)');
+  look.drag(5000, 5000);
+  assert.equal(look.yaw, YAW_MAX); assert.equal(look.pitch, PITCH_MAX);
+  look.update(1);
+  assert.equal(look.yaw, YAW_MAX, 'held: no return while the finger is down');
+  look.release();
+  for (let i = 0; i < 60; i++) look.update(1 / 60);
+  assert.ok(Math.abs(look.yaw) < 5 && Math.abs(look.pitch) < 3, `mostly back within a second: ${look.yaw} ${look.pitch}`);
+  for (let i = 0; i < 120; i++) look.update(1 / 60);
+  assert.equal(look.yaw, 0); assert.equal(look.pitch, 0); assert.equal(look.active, false);
+});
