@@ -29,6 +29,9 @@ const camera = new THREE.PerspectiveCamera(60, 1, 1, 30000);
 const world = createWorld(scene);
 const jet = createAircraft();
 scene.add(jet);
+// Fly waits for the model: on a first visit it may still be downloading.
+jet.ready.then(() => { document.getElementById('fly').disabled = false; },
+  (e) => { console.error(e); document.getElementById('jet-error').hidden = false; });
 const chase = createChaseCamera(camera);
 const hud = createHud(document.getElementById('hud'));
 
