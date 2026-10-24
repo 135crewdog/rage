@@ -10,13 +10,14 @@ import * as Quat from './sim/quaternion.js';
 import { createWorld } from './render/world.js';
 import { createAircraft } from './render/aircraft.js';
 import { createChaseCamera } from './render/camera.js';
+import { createLook, attachLook } from './input/look.js';
 import { createHud } from './hud/hud.js';
 import { createThrottle } from './ui/throttle.js';
 import { createStickIndicator } from './ui/stick.js';
 import { createScreens } from './ui/screens.js';
 import { upInScreen, tiltOf, stickFrom, smooth, MAPPING } from './input/tilt.js';
 
-export const APP_VERSION = '0.1.6';   // the same value as VERSION in sw.js
+export const APP_VERSION = '0.1.7';   // the same value as VERSION in sw.js
 const AIR_START = { h: 5000, kcas: 350 };
 const DEBUG = new URLSearchParams(location.search).get('debug') === '1';
 
@@ -33,6 +34,8 @@ scene.add(jet);
 jet.ready.then(() => { document.getElementById('fly').disabled = false; },
   (e) => { console.error(e); document.getElementById('jet-error').hidden = false; });
 const chase = createChaseCamera(camera);
+const look = createLook();                  // look-around by dragging the view
+attachLook(view, look, () => mode === 'flying');
 const hud = createHud(document.getElementById('hud'));
 
 let sizedW = 0, sizedH = 0;
@@ -163,6 +166,7 @@ function startFlight() {
 function pause() {
   if (mode !== 'flying') return;
   mode = 'paused';
+  look.reset();                               // resume from the plain chase view
   screens.show('pause');
 }
 
@@ -289,12 +293,13 @@ function frame(now) {
   jet.position.copy(lerped.position);
   jet.quaternion.copy(lerped.quaternion);
   const aux = sim.aux;
-  chase.update(elapsed, lerped.position, lerped.quaternion, { nz: aux.nz, alphaDeg: aux.alpha * 180 / Math.PI, qbar: aux.qbar });
+  look.update(elapsed);
+  chase.update(elapsed, lerped.position, lerped.quaternion, { nz: aux.nz, alphaDeg: aux.alpha * 180 / Math.PI, qbar: aux.qbar }, look);
   world.update(camera.position);
   renderer.render(scene, camera);
 
   const air = sim.airdata;
-  hud.draw(air, sim.powerState, projectDirection, velocityNed(sim.state), noseNed(sim.state));
+  hud.draw(air, sim.powerState, projectDirection, velocityNed(sim.state), noseNed(sim.state), look.active);
   stickIndicator.update(stick, sim.limited && stick.pitch > 0, !neutral || tilt.confidence < 0.3);
 
   frames++;
@@ -317,6 +322,7 @@ window.rage = {
   get mode() { return mode; },
   get sim() { return sim; },
   get stick() { return stick; },
+  get look() { return look; },
   get neutral() { return neutral; },
   get draws() { return renderer.info.render.calls; },
 };

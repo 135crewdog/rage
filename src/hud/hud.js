@@ -96,8 +96,9 @@ export function createHud(canvas) {
 
   // air: the airdata object; power: { label, percent }; project: a NED
   // direction → { x, y, visible } on the screen; velocity and nose: unit NED
-  // directions of the flight path and the body x axis.
-  function draw(air, power, project, velocity, nose) {
+  // directions of the flight path and the body x axis; looking: true while
+  // the view is swung away from the chase position.
+  function draw(air, power, project, velocity, nose, looking = false) {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, w, h);
     const cx = w / 2, cy = h / 2;
@@ -170,11 +171,14 @@ export function createHud(canvas) {
       });
     }
 
-    // flight path marker: where the jet is actually going
+    // flight path marker: where the jet is actually going. Held at the HUD's
+    // edge and dashed when it leaves the frame, as the jet's is; while looking
+    // around it is simply where it is, in view or not.
     const f = project(velocity);
-    if (f.visible) {
+    const inFrame = f.visible && f.x >= left + 30 && f.x <= right - 30 && f.y >= top + 60 && f.y <= bottom - 70;
+    if (f.visible && (inFrame || !looking)) {
       const fx = Math.max(left + 30, Math.min(right - 30, f.x)), fy = Math.max(top + 60, Math.min(bottom - 70, f.y));
-      dashed(fx !== f.x || fy !== f.y);               // dashed when held at the edge of the HUD
+      dashed(!inFrame);
       stroke(() => {
         ctx.arc(fx, fy, 7, 0, Math.PI * 2);
         ctx.moveTo(fx + 7, fy); ctx.lineTo(fx + 20, fy);

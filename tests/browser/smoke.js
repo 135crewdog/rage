@@ -115,6 +115,14 @@ async function main() {
     assert.ok(Math.abs(rolled.bank) > 10, `the jet banked: ${rolled.bank}`);
     await shot('roll');
 
+    // look around: a drag on the view swings the camera; lifting the finger eases it back
+    await page.mouse.move(600, 200); await page.mouse.down(); await page.mouse.move(420, 240, { steps: 6 });
+    const yaw = await page.evaluate(() => window.rage.look.yaw);
+    assert.ok(yaw < -20, `dragging left looks right: yaw ${yaw}`);
+    await shot('look');
+    await page.mouse.up();
+    await page.waitForFunction(() => window.rage.look.yaw === 0 && !window.rage.look.active, null, { timeout: 15000 });
+
     // pause, settings, theme, resume
     await page.click('#pause');
     await page.waitForFunction(() => window.rage.mode === 'paused');
