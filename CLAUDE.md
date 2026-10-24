@@ -27,7 +27,7 @@ The owner's design philosophy applies to everything a person sees or touches: ht
 | 1a | Simulation core: atmosphere, aero, engine, actuators, equations of motion, trim solver, air data. All of `docs/flight-model.md` section 12.1 and 12.3 passing. No visuals. | Done |
 | 1b | Flight control system, tuned. Section 12.2 passing. A headless flight script that flies a manoeuvre and prints a time history, so tuning is visible. | Done |
 | 1c | The app: world, aircraft, camera, HUD, UI, tilt, throttle, menus, PWA, Pages. Ends with the owner flying it on the iPhone. | Flown. Tilt, crash, update prompt and pause-when-hidden confirmed; the wake lock still to confirm |
-| 1d | **Second look.** The four items under "Next round" below, from the owner's first flights. | In progress: 1 done |
+| 1d | **Second look.** The four items under "Next round" below, from the owner's first flights. | In progress: 2 done |
 
 Later milestones (terrain, sound, a bandit to dogfight) get specified when milestone 1 is done.
 
@@ -64,7 +64,7 @@ tests/browser/smoke.js    loads the app in headless Chromium and flies a few sec
 
 ## The aircraft and the world
 
-- **The jet** is a low-poly F-16C model, “F 16 C” by Usman Zia, CC BY 4.0, converted to glTF in `models/f16c.glb` and credited in `models/CREDITS.md` and in Settings. It is loaded with three.js's GLTFLoader addon, copied into `vendor/three/examples/jsm/` with its two helpers. Control surfaces don't need to move in milestone 1.
+- **The jet** is a low-poly F-16C model, “F 16 C” by Usman Zia, CC BY 4.0, converted to glTF in `models/f16c.glb` and credited in `models/CREDITS.md` and under Credits in Settings. It is loaded with three.js's GLTFLoader addon, copied into `vendor/three/examples/jsm/` with its two helpers. Control surfaces don't need to move in milestone 1.
 - **The world** in milestone 1 is flat ground at 0 ft with a grid fine enough to read speed and height from, a sky that fades to a horizon colour, and fog that hides the far edge. Sun from above, no shadows.
 - **Air start:** 5,000 ft, 350 KCAS, wings level, heading north, trimmed for 1 g. The throttle slider starts at the trim setting. The FCS starts trimmed too (`docs/flight-model.md` 8.2).
 - **Crash:** below 0 ft the flight ends. The screen says "Crashed" with one button, "Fly again", which restarts from the air start.
@@ -98,7 +98,7 @@ Screens:
 
 - **Start.** The name, and one button: **Fly**. Tapping it asks for motion access, keeps the screen awake and starts the flight. The motion permission request is the first statement in that tap's handler, before anything else, or iOS refuses it.
 - **Pause.** Resume, **Recenter controls**, Fly again (back to the air start), Settings.
-- **Settings.** Theme: Light, Dark, Auto (Auto follows the phone). The app's version. Done.
+- **Settings.** Theme: Light, Dark, Auto (Auto follows the phone). The app's version. A Credits row that expands in place to the jet's credit and licence. Done.
 - **Rotate your phone.** Shown whenever the phone is in portrait. It also says: if it won't rotate, turn off Portrait Orientation Lock in Control Center.
 - **Motion access denied.** If the permission is refused, say so plainly and how to fix it: close the app completely, open it again, tap Fly and choose Allow. There is no touch-stick fallback (see Parked).
 
