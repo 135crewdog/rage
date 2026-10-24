@@ -78,16 +78,22 @@ async function main() {
     await page.waitForFunction(() => window.rage.mode === 'flying');
     assert.equal(await page.evaluate(() => document.getElementById('controls').hidden), false);
 
-    // feed tilt: a neutral attitude first (captured as the centre), then hold it
-    const feed = async (back, turn, ms) => {
+    // feed tilt until the simulation has flown `seconds` of its own time. The
+    // loop drops wall time it cannot simulate (at most 8 steps a frame), and a
+    // software renderer in CI may manage only a few frames a second, so wall
+    // time is no measure of flight time. A neutral attitude first, then hold it.
+    const simTime = () => page.evaluate(() => window.rage.sim.time);
+    const feed = async (back, turn, seconds) => {
       const s = sensor(back, turn);
-      const until = Date.now() + ms;
-      while (Date.now() < until) {
+      const t0 = await simTime();
+      const deadline = Date.now() + 120000;
+      while ((await simTime()) < t0 + seconds) {
+        if (Date.now() > deadline) throw new Error(`the simulation did not advance ${seconds} s in 120 s of wall time`);
         await page.evaluate((o) => window.dispatchEvent(new DeviceOrientationEvent('deviceorientation', o)), s);
         await page.waitForTimeout(16);
       }
     };
-    await feed(30, 0, 400);
+    await feed(30, 0, 0.4);
     assert.ok(await page.evaluate(() => window.rage.neutral !== null), 'neutral captured');
     const level = await page.evaluate(() => ({ nz: window.rage.sim.aux.nz, bank: window.rage.sim.airdata.roll, t: window.rage.sim.time }));
     assert.ok(level.t > 0.2, `simulation advancing: t ${level.t}`);
@@ -96,15 +102,14 @@ async function main() {
     await shot('level');
 
     // pull: tilt the top edge 20° toward the pilot
-    await feed(50, 0, 1500);
+    await feed(50, 0, 1.5);
     const pulled = await page.evaluate(() => ({ nz: window.rage.sim.aux.nz, stick: window.rage.stick.pitch, pitch: window.rage.sim.airdata.pitch }));
     assert.ok(Math.abs(pulled.stick) > 0.5, `pitch stick moved: ${pulled.stick}`);
     assert.ok(pulled.nz > 1.5 || pulled.nz < 0.5, `the jet responded in g: ${pulled.nz}`);
     await shot('pull');
 
     // roll: turn the wheel 25° to the right
-    await feed(30, -25, 300);
-    await feed(30, -25, 1200);
+    await feed(30, -25, 1.5);
     const rolled = await page.evaluate(() => ({ bank: window.rage.sim.airdata.roll, stick: window.rage.stick.roll }));
     assert.ok(Math.abs(rolled.stick) > 0.5, `roll stick moved: ${rolled.stick}`);
     assert.ok(Math.abs(rolled.bank) > 10, `the jet banked: ${rolled.bank}`);
