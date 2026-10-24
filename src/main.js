@@ -58,9 +58,12 @@ let carry = 0;
 let prevPose = null, pose = null;
 let throttleValue = sim.trimThrottle;
 const stick = { pitch: 0, roll: 0 };
+// Portrait: the rotate screen, whatever else was asked for.
+const portrait = matchMedia('(orientation: portrait)');
 const screens = createScreens({
   version: APP_VERSION,
   onFly: fly, onResume: resume, onRecenter: recenter, onFlyAgain: flyAgain, onUpdate: applyUpdate,
+  locked: () => (portrait.matches ? 'rotate' : null),
 });
 const throttle = createThrottle(document.getElementById('throttle'), throttleValue, (v) => { throttleValue = v; });
 const stickIndicator = createStickIndicator(document.getElementById('stick'));
@@ -115,7 +118,14 @@ function recenter() {
   wantRecenter = true;
   neutral = null;
   stick.pitch = stick.roll = smoothed.pitch = smoothed.roll = 0;
-  if (mode === 'paused') screens.show('pause');
+}
+
+// The screen that belongs to the current mode (the rotate screen wins in portrait).
+function showForMode() {
+  if (mode === 'flying') screens.hide();
+  else if (mode === 'paused') screens.show('pause');
+  else if (mode === 'crashed') screens.show('crashed');
+  else screens.show('start');
 }
 
 // ---- screens and modes ----
@@ -140,6 +150,7 @@ function fly() {
 }
 
 function startFlight() {
+  if (portrait.matches) { screens.show('rotate'); return; }   // no flying in portrait
   mode = 'flying';
   controls.hidden = false;
   screens.hide();
@@ -161,6 +172,7 @@ function resume() {
 }
 
 function flyAgain() {
+  if (portrait.matches) return;
   airStart();
   recenter();
   startFlight();
@@ -178,14 +190,10 @@ document.addEventListener('visibilitychange', () => {
 });
 
 // Portrait: show the rotate screen; on any rotation during flight, pause and recenter.
-const portrait = matchMedia('(orientation: portrait)');
 function onRotate() {
-  if (portrait.matches) {
-    if (mode === 'flying') pause();
-    screens.show('rotate');
-  } else {
-    if (mode === 'paused') { recenter(); screens.show('pause'); } else if (mode !== 'flying') screens.show(mode === 'crashed' ? 'crashed' : 'start');
-  }
+  if (portrait.matches && mode === 'flying') pause();
+  if (!portrait.matches && mode === 'paused') recenter();
+  showForMode();
   resize();
 }
 portrait.addEventListener('change', onRotate);
@@ -197,7 +205,9 @@ function onScreenAngle() {
   const a = screenAngle();
   if (a === lastAngle) return;
   lastAngle = a;
-  if (mode === 'flying') { pause(); recenter(); } else if (mode === 'paused') recenter();
+  if (mode === 'flying') pause();
+  if (mode === 'paused') recenter();
+  showForMode();
 }
 if (screen.orientation) screen.orientation.addEventListener('change', onScreenAngle);
 window.addEventListener('orientationchange', onScreenAngle);

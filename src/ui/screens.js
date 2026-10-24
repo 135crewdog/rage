@@ -15,7 +15,9 @@ export function applyTheme(choice) {
   for (const b of document.querySelectorAll('#theme button')) b.setAttribute('aria-checked', String(b.dataset.theme === choice));
 }
 
-export function createScreens({ version, onFly, onResume, onRecenter, onFlyAgain, onUpdate }) {
+// locked: a function returning the name of a screen that must show instead
+// of any other (the rotate screen while the phone is portrait), or null.
+export function createScreens({ version, onFly, onResume, onRecenter, onFlyAgain, onUpdate, locked = () => null }) {
   const screens = {};
   for (const el of document.querySelectorAll('.screen')) screens[el.id.replace('screen-', '')] = el;
   const container = document.getElementById('screens');
@@ -23,6 +25,8 @@ export function createScreens({ version, onFly, onResume, onRecenter, onFlyAgain
   let previous = null;
 
   function show(name) {
+    const forced = locked();
+    if (forced) name = forced;
     for (const [k, el] of Object.entries(screens)) el.hidden = k !== name;
     container.classList.toggle('clear', name === null);
     current = name;

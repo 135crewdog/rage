@@ -128,6 +128,23 @@ async function main() {
     await page.click('#resume');
     await page.waitForFunction(() => window.rage.mode === 'flying');
 
+    // portrait: the rotate screen wins over every other screen and nothing flies
+    await page.click('#pause');
+    await page.waitForFunction(() => window.rage.mode === 'paused');
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.waitForFunction(() => !document.getElementById('screen-rotate').hidden);
+    assert.equal(await page.evaluate(() => document.getElementById('screen-pause').hidden), true, 'pause screen hidden in portrait');
+    await page.evaluate(() => document.getElementById('recenter').click());
+    await page.evaluate(() => document.getElementById('fly-again').click());
+    await page.evaluate(() => document.getElementById('resume').click());
+    await page.waitForTimeout(200);
+    assert.equal(await page.evaluate(() => window.rage.mode), 'paused', 'still paused in portrait');
+    assert.equal(await page.evaluate(() => document.getElementById('screen-rotate').hidden), false, 'rotate screen still showing');
+    await page.setViewportSize({ width: 844, height: 390 });
+    await page.waitForFunction(() => !document.getElementById('screen-pause').hidden);
+    await page.click('#resume');
+    await page.waitForFunction(() => window.rage.mode === 'flying');
+
     // the service worker registers and caches under a rage- prefix
     await page.waitForFunction(() => navigator.serviceWorker.controller !== null || navigator.serviceWorker.getRegistrations().then((r) => r.length > 0), null, { timeout: 15000 }).catch(() => {});
     const caches = await page.evaluate(async () => { await navigator.serviceWorker.ready; return (await window.caches.keys()); });
