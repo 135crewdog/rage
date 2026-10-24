@@ -5,7 +5,8 @@
 import * as THREE from 'three';
 import { Simulation, stepsFor, DT } from './sim/simulation.js';
 import { IX, quaternionOf } from './sim/dynamics.js';
-import { positionToWorld, attitudeToWorld } from './render/frames.js';
+import { positionToWorld, attitudeToWorld, vectorToWorld } from './render/frames.js';
+import * as Quat from './sim/quaternion.js';
 import { createWorld } from './render/world.js';
 import { createAircraft } from './render/aircraft.js';
 import { createChaseCamera } from './render/camera.js';
@@ -180,6 +181,17 @@ function onRotate() {
 }
 portrait.addEventListener('change', onRotate);
 if (portrait.matches) screens.show('rotate');
+// A flip between the two landscapes never changes the portrait query, but it
+// turns the tilt frame by 180°: pause and recenter on any orientation change.
+let lastAngle = screenAngle();
+function onScreenAngle() {
+  const a = screenAngle();
+  if (a === lastAngle) return;
+  lastAngle = a;
+  if (mode === 'flying') { pause(); recenter(); } else if (mode === 'paused') recenter();
+}
+if (screen.orientation) screen.orientation.addEventListener('change', onScreenAngle);
+window.addEventListener('orientationchange', onScreenAngle);
 
 // ---- service worker and updates ----
 let waiting = null;
@@ -195,10 +207,32 @@ if ('serviceWorker' in navigator) {
     watch(reg.waiting);
     reg.addEventListener('updatefound', () => watch(reg.installing));
   }).catch(() => {});
-  navigator.serviceWorker.addEventListener('controllerchange', () => location.reload());
+  // Reload only for an update the pilot accepted: the first install also
+  // takes control (clients.claim) and must not interrupt a flight.
+  navigator.serviceWorker.addEventListener('controllerchange', () => { if (updateAccepted) location.reload(); });
 }
+let updateAccepted = false;
 function applyUpdate() {
-  if (waiting) waiting.postMessage('skip-waiting');
+  if (!waiting) return;
+  updateAccepted = true;
+  waiting.postMessage('skip-waiting');
+}
+
+// ---- HUD projection: a direction in NED → where it falls on the screen ----
+const projected = new THREE.Vector3();
+function projectDirection([n, e, d]) {
+  const w = vectorToWorld([n, e, d]);
+  projected.set(camera.position.x + w[0] * 10000, camera.position.y + w[1] * 10000, camera.position.z + w[2] * 10000).project(camera);
+  const behind = projected.z > 1;
+  return { x: (projected.x + 1) / 2 * view.clientWidth, y: (1 - projected.y) / 2 * view.clientHeight, visible: !behind };
+}
+function velocityNed(state) {
+  const v = Quat.bodyToNed(quaternionOf(state), [state[IX.U], state[IX.V], state[IX.W]]);
+  const m = Math.hypot(v[0], v[1], v[2]) || 1;
+  return [v[0] / m, v[1] / m, v[2] / m];
+}
+function noseNed(state) {
+  return Quat.bodyToNed(quaternionOf(state), [1, 0, 0]);
 }
 
 // ---- the loop ----
@@ -237,7 +271,7 @@ function frame(now) {
   renderer.render(scene, camera);
 
   const air = sim.airdata;
-  hud.draw(air, sim.powerState);
+  hud.draw(air, sim.powerState, projectDirection, velocityNed(sim.state), noseNed(sim.state));
   stickIndicator.update(stick, sim.limited && stick.pitch > 0, !neutral || tilt.confidence < 0.3);
 
   frames++;

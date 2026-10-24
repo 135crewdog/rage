@@ -1,11 +1,21 @@
 // The head-up display: thin green symbols over the view, the way a fighter
 // HUD looks. Drawn on a 2-D canvas every frame from the simulation's air data
 // (docs/flight-model.md section 9). Not part of the UI; ignores the theme.
+//
+// The HUD is conformal with the view: the flight-path marker, the waterline
+// and the pitch ladder are world directions projected through the chase
+// camera, so the marker sits on the point the jet is flying toward and the
+// ladder rolls and scales with the camera.
 
 const GREEN = '#7cff4f';
 const OUTLINE = 'rgba(0,0,0,0.75)';
-const PX_PER_DEG = 11;          // pitch-ladder scale
 const D2R = Math.PI / 180;
+
+// A unit NED direction at heading ψ and pitch θ (degrees).
+function direction(headingDeg, pitchDeg) {
+  const h = headingDeg * D2R, p = pitchDeg * D2R;
+  return [Math.cos(p) * Math.cos(h), Math.cos(p) * Math.sin(h), -Math.sin(p)];
+}
 
 export function createHud(canvas) {
   const ctx = canvas.getContext('2d');
@@ -36,8 +46,10 @@ export function createHud(canvas) {
   }
   function dashed(on) { ctx.setLineDash(on ? [8, 6] : []); }
 
-  // air: the airdata object; power: { label, percent }
-  function draw(air, power) {
+  // air: the airdata object; power: { label, percent }; project: a NED
+  // direction → { x, y, visible } on the screen; velocity and nose: unit NED
+  // directions of the flight path and the body x axis.
+  function draw(air, power, project, velocity, nose) {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, w, h);
     const cx = w / 2, cy = h / 2;
@@ -57,41 +69,56 @@ export function createHud(canvas) {
       if (major) text(String(((deg % 360) + 360) % 360 / 10).padStart(2, '0'), x, top + 22, 'center', 12);
     }
 
-    // pitch ladder and horizon, rolling with the jet about the waterline
+    // pitch ladder and horizon: each line is the direction at heading ψ ± a
+    // span and pitch p, projected, so it lies on the scene and rolls with it
     ctx.save();
-    ctx.beginPath(); ctx.rect(left + 40, top + 50, right - left - 80, bottom - top - 100); ctx.clip();
-    ctx.translate(cx, cy);
-    ctx.rotate(-air.roll * D2R);
-    ctx.translate(0, air.pitch * PX_PER_DEG);     // the horizon drops below the waterline when the nose is up
+    // the ladder shows through a window about the centre, like the glass of a real HUD
+    ctx.beginPath(); ctx.rect(cx - w * 0.27, top + 52, w * 0.54, bottom - top - 112); ctx.clip();
     for (let p = -90; p <= 90; p += 5) {
-      const y = -p * PX_PER_DEG;
-      if (Math.abs(y + air.pitch * PX_PER_DEG) > h) continue;   // off the screen after the translate
-      const half = p === 0 ? w * 0.22 : 48;
+      const span = p === 0 ? 22 : 5;                 // degrees of azimuth each side
+      const a = project(direction(hdg - span, p)), b = project(direction(hdg + span, p));
+      const gap = project(direction(hdg - span * (p === 0 ? 0.22 : 0.3), p)), gapB = project(direction(hdg + span * (p === 0 ? 0.22 : 0.3), p));
+      if (!a.visible || !b.visible) continue;
+      if (Math.min(a.x, b.x) > w || Math.max(a.x, b.x) < 0 || Math.min(a.y, b.y) > h || Math.max(a.y, b.y) < 0) continue;
+      const dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy) || 1;
+      const tx = -dy / len * 8 * (p > 0 ? 1 : -1), ty = dx / len * 8 * (p > 0 ? 1 : -1);   // end ticks toward the horizon
       dashed(p < 0);
       stroke(() => {
-        ctx.moveTo(-half, y); ctx.lineTo(-(p === 0 ? 40 : 14), y);
-        ctx.moveTo(p === 0 ? 40 : 14, y); ctx.lineTo(half, y);
-        if (p !== 0) { ctx.moveTo(-half, y); ctx.lineTo(-half, y + (p > 0 ? 8 : -8)); ctx.moveTo(half, y); ctx.lineTo(half, y + (p > 0 ? 8 : -8)); }
+        ctx.moveTo(a.x, a.y); ctx.lineTo(gap.x, gap.y);
+        ctx.moveTo(gapB.x, gapB.y); ctx.lineTo(b.x, b.y);
+        if (p !== 0) { ctx.moveTo(a.x, a.y); ctx.lineTo(a.x + tx, a.y + ty); ctx.moveTo(b.x, b.y); ctx.lineTo(b.x + tx, b.y + ty); }
       });
       dashed(false);
-      if (p !== 0) { text(String(Math.abs(p)), -half - 6, y, 'right', 12); text(String(Math.abs(p)), half + 6, y, 'left', 12); }
+      if (p !== 0) {
+        const ux = dx / len * 14, uy = dy / len * 14;
+        text(String(Math.abs(p)), a.x - ux, a.y - uy, 'center', 12);
+        text(String(Math.abs(p)), b.x + ux, b.y + uy, 'center', 12);
+      }
     }
     ctx.restore();
 
     // waterline: where the nose points
-    stroke(() => {
-      ctx.moveTo(cx - 22, cy); ctx.lineTo(cx - 10, cy); ctx.lineTo(cx - 5, cy + 7); ctx.lineTo(cx, cy); ctx.lineTo(cx + 5, cy + 7); ctx.lineTo(cx + 10, cy); ctx.lineTo(cx + 22, cy);
-    });
+    const n = project(nose);
+    if (n.visible) {
+      const nx = n.x, ny = n.y;
+      stroke(() => {
+        ctx.moveTo(nx - 22, ny); ctx.lineTo(nx - 10, ny); ctx.lineTo(nx - 5, ny + 7); ctx.lineTo(nx, ny); ctx.lineTo(nx + 5, ny + 7); ctx.lineTo(nx + 10, ny); ctx.lineTo(nx + 22, ny);
+      });
+    }
 
-    // flight path marker: the velocity vector relative to the nose, in the
-    // jet's own frame (the view rolls with the jet)
-    const fx = cx + air.beta * PX_PER_DEG, fy = cy + air.alpha * PX_PER_DEG;
-    stroke(() => {
-      ctx.arc(fx, fy, 7, 0, Math.PI * 2);
-      ctx.moveTo(fx + 7, fy); ctx.lineTo(fx + 20, fy);
-      ctx.moveTo(fx - 7, fy); ctx.lineTo(fx - 20, fy);
-      ctx.moveTo(fx, fy - 7); ctx.lineTo(fx, fy - 15);
-    });
+    // flight path marker: where the jet is actually going
+    const f = project(velocity);
+    if (f.visible) {
+      const fx = Math.max(left + 30, Math.min(right - 30, f.x)), fy = Math.max(top + 60, Math.min(bottom - 70, f.y));
+      dashed(fx !== f.x || fy !== f.y);               // dashed when held at the edge of the HUD
+      stroke(() => {
+        ctx.arc(fx, fy, 7, 0, Math.PI * 2);
+        ctx.moveTo(fx + 7, fy); ctx.lineTo(fx + 20, fy);
+        ctx.moveTo(fx - 7, fy); ctx.lineTo(fx - 20, fy);
+        ctx.moveTo(fx, fy - 7); ctx.lineTo(fx, fy - 15);
+      });
+      dashed(false);
+    }
 
     // airspeed (KCAS) on the left, altitude on the right, with carets
     stroke(() => { ctx.moveTo(left + 46, cy); ctx.lineTo(left + 54, cy - 5); ctx.lineTo(left + 54, cy + 5); ctx.closePath(); });
