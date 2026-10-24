@@ -61,14 +61,16 @@ function foilRing(across, le, te, t, vertical) {
   return upper.concat(lower).map(([z, h]) => (vertical ? [h, across, z] : [across, h, z]));
 }
 
-// A half-round ring standing on a buried base: the dorsal fairing's sections.
-function domeRing(z, hw, base, top, n = 10) {
+// A round-topped ring standing on a buried base, flat-sided below the
+// crown: the dorsal fairing's sections.
+function domeRing(z, hw, base, top) {
+  const cy = Math.max(top - hw, base);
   const pts = [];
-  for (let i = 0; i <= n; i++) {
-    const a = Math.PI * i / n;
-    pts.push([hw * Math.sin(a), base + (top - base) * Math.cos(a) * 0.5 + (top - base) * 0.5, z]);
+  for (let i = 0; i <= 4; i++) {
+    const a = Math.PI / 2 * i / 4;
+    pts.push([hw * Math.sin(a), cy + hw * Math.cos(a), z]);
   }
-  return pts.concat([[0, base, z]]);
+  return pts.concat([[hw, base, z], [0, base, z]]);
 }
 
 // A thin plate from an outline in the y–z plane (z aft, y up), at offset x.
@@ -123,7 +125,7 @@ const WING_TE = 3.75;
 const STAB = [[0.50, 4.14, 7.20], [1.13, 4.70, 7.20], [2.00, 5.47, 7.20], [2.54, 5.95, 7.20], [2.77, 6.15, 6.90]];
 
 // Fin: [height, leading edge, trailing edge, thickness], root to tip.
-const FIN = [[1.06, 4.15, 6.66, 0.36], [1.60, 4.78, 6.88, 0.26], [2.09, 5.35, 7.11, 0.18], [2.60, 5.85, 7.35, 0.13], [2.99, 6.35, 7.55, 0.10]];
+const FIN = [[0.90, 4.02, 6.80, 0.36], [1.06, 4.15, 6.66, 0.34], [1.60, 4.78, 6.88, 0.26], [2.09, 5.35, 7.11, 0.18], [2.60, 5.85, 7.35, 0.13], [2.99, 6.35, 7.55, 0.10]];
 
 export function createAircraft() {
   const jet = new THREE.Group();
@@ -165,10 +167,12 @@ export function createAircraft() {
   jet.add(new THREE.Mesh(loft(fin), skin));
 
   // Dorsal fairing: the spine rising from behind the canopy into the fin's
-  // root, running on under the fin to the nozzle. [z, half-width, top]
+  // root, running on under the fin to the blunt pod behind the rudder.
+  // [z, half-width, top]
   const DORSAL = [
     [2.10, 0.20, 0.66], [2.60, 0.24, 0.78], [3.15, 0.27, 0.89], [3.75, 0.29, 1.02], [4.15, 0.30, 1.10],
-    [5.00, 0.30, 1.04], [6.00, 0.28, 0.96], [6.60, 0.24, 0.72], [6.85, 0.20, 0.60], [7.00, 0.10, 0.56],
+    [5.00, 0.30, 1.04], [6.00, 0.28, 0.96], [6.45, 0.27, 1.00], [6.70, 0.27, 1.14], [7.05, 0.27, 1.17],
+    [7.25, 0.22, 1.08], [7.32, 0.08, 0.92],
   ];
   jet.add(new THREE.Mesh(loft(DORSAL.map(([z, hw, top]) => domeRing(z, hw, 0.30, top))), skin));
 
