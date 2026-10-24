@@ -24,7 +24,7 @@ The owner's design philosophy applies to everything a person sees or touches: ht
 | # | Scope | Status |
 |---|---|---|
 | 1 | **First flight.** The whole simulation in `docs/flight-model.md`, tested; a flat world; the jet, the chase camera, the HUD and the UI; tilt and throttle; the app installable and working offline; deployed to Pages. Delivered as the three pull requests below. | Not started |
-| 1a | Simulation core: atmosphere, aero, engine, actuators, equations of motion, trim solver, air data. All of `docs/flight-model.md` section 12.1 and 12.3 passing. No visuals. | Not started |
+| 1a | Simulation core: atmosphere, aero, engine, actuators, equations of motion, trim solver, air data. All of `docs/flight-model.md` section 12.1 and 12.3 passing. No visuals. | Done |
 | 1b | Flight control system, tuned. Section 12.2 passing. A headless flight script that flies a manoeuvre and prints a time history, so tuning is visible. | Not started |
 | 1c | The app: world, aircraft, camera, HUD, UI, tilt, throttle, menus, PWA, Pages. Ends with the owner flying it on the iPhone. | Not started |
 

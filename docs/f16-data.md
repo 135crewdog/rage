@@ -252,7 +252,7 @@ These are converted to VTdot, alphadot and betadot, followed by the standard Eul
 
 All deflections are in degrees. Per Russell's manual and the table signs:
 
-* **+el** = trailing-edge down: nose-down pitching moment (CM decreases with el) and less negative CZ.
+* **+el** = trailing-edge down: nose-down pitching moment (CM decreases with el) and more negative CZ (the formula's `- .19*(el/25)` adds lift; the check case confirms the sign).
 * **+ail** gives negative rolling moment (DLDA < 0): right aileron down, left up, and roll rate p decreases.
 * **+rdr** gives negative yawing moment (DNDR < 0) and positive side force (+.086).
 
