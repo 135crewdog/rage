@@ -6,13 +6,17 @@
 
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { createPlume } from './plume.js';
 
 const MODEL = './models/f16c.glb';
 
 // Returns the jet's group at once, empty until the model has loaded; `ready`
-// resolves with the group when it has.
+// resolves with the group when it has. `plume` is the afterburner, updated
+// each frame from the engine's burner fraction.
 export function createAircraft() {
   const jet = new THREE.Group();
+  jet.plume = createPlume();
+  jet.add(jet.plume.mesh);
   jet.ready = new GLTFLoader().loadAsync(MODEL).then((gltf) => {
     jet.add(gltf.scene);
     return jet;

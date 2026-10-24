@@ -115,6 +115,15 @@ async function main() {
     assert.ok(Math.abs(rolled.bank) > 10, `the jet banked: ${rolled.bank}`);
     await shot('roll');
 
+    // afterburner: full throttle, wait for the engine to spool into the burner, the plume shows
+    await page.evaluate(() => { window.rage.throttle = 1; });
+    await page.waitForFunction(() => window.rage.sim.powerState.label === 'AB' && window.rage.sim.powerState.percent > 50, null, { timeout: 60000 });
+    assert.equal(await page.evaluate(() => window.rage.plume.visible), true, 'plume visible in afterburner');
+    await shot('burner');
+    await page.evaluate(() => { window.rage.throttle = 0.3; });
+    await page.waitForFunction(() => window.rage.sim.powerState.label !== 'AB', null, { timeout: 60000 });
+    assert.equal(await page.evaluate(() => window.rage.plume.visible), false, 'plume hidden at dry power');
+
     // look around: a drag on the view swings the camera; lifting the finger eases it back
     await page.mouse.move(600, 200); await page.mouse.down(); await page.mouse.move(420, 240, { steps: 6 });
     const yaw = await page.evaluate(() => window.rage.look.yaw);
