@@ -26,7 +26,8 @@ The owner's design philosophy applies to everything a person sees or touches: ht
 | 1 | **First flight.** The whole simulation in `docs/flight-model.md`, tested; a flat world; the jet, the chase camera, the HUD and the UI; tilt and throttle; the app installable and working offline; deployed to Pages. Delivered as the three pull requests below. | Not started |
 | 1a | Simulation core: atmosphere, aero, engine, actuators, equations of motion, trim solver, air data. All of `docs/flight-model.md` section 12.1 and 12.3 passing. No visuals. | Done |
 | 1b | Flight control system, tuned. Section 12.2 passing. A headless flight script that flies a manoeuvre and prints a time history, so tuning is visible. | Done |
-| 1c | The app: world, aircraft, camera, HUD, UI, tilt, throttle, menus, PWA, Pages. Ends with the owner flying it on the iPhone. | Built; waiting for the owner's flight |
+| 1c | The app: world, aircraft, camera, HUD, UI, tilt, throttle, menus, PWA, Pages. Ends with the owner flying it on the iPhone. | Flown. Tilt, crash, update prompt and pause-when-hidden confirmed; the wake lock still to confirm |
+| 1d | **Second look.** The four items under "Next round" below, from the owner's first flights. | Proposed |
 
 Later milestones (terrain, sound, a bandit to dogfight) get specified when milestone 1 is done.
 
@@ -138,6 +139,17 @@ One version string, `APP_VERSION` in `src/main.js`, shown in Settings, and the s
 ## Deliberately not in the game
 
 Not in milestone 1, and not planned unless the owner says so: missions, scores, a story, menus beyond those above, weapons, multiple aircraft, cockpit view, and everything in `docs/flight-model.md` section 13.
+
+## Next round (milestone 1d)
+
+Agreed with the owner after the first flights; each is its own pull request, in this order.
+
+1. **Zenith and nadir symbols** on the pitch ladder at +90° and −90°, as the real F-16 HUD draws them (the exact symbols checked against references first), so straight up and straight down read without hunting between the 85° bars. Conformal like the rest of the ladder.
+2. **Credits as an expanding row** in Settings: a "Credits" row under the version that opens in place to show the jet's full credit and licence, instead of the line now under the version.
+3. **Look-around by dragging.** A finger dragged on the game view, outside the throttle, pause button and stick indicator, swings the chase camera around the jet in two axes: dragging right pulls the world right, so you end up looking left; up and down tilt over and under the jet. Lifting the finger eases the view back to the standard chase position. The jet keeps flying by tilt and the throttle keeps working under the other thumb. The HUD does what vazgriz's does: the ladder, horizon, waterline and flight-path marker stay where they are in the world, so they are seen only when the view happens to include them; airspeed, altitude, heading, g, AoA, Mach and power stay in their fixed places.
+4. **Afterburner visuals.** A tapered plume from the nozzle with shock diamonds, growing with the burner percentage, driven by the engine's afterburner state like the HUD's power readout, so it lights with the spool-up lag and not with the slider. The model's nozzle stays as it is. Nothing shows at dry power. vazgriz's afterburner effect (MIT) is the reference.
+
+Settled at the same time: the transonic patch in `docs/flight-model.md` 5.2 is enough for now; no placard warning. Milestone 2 waits until this round is done.
 
 ## Parked
 
