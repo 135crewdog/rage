@@ -7,16 +7,12 @@ import assert from 'node:assert/strict';
 import { trimSustainedTurn, trimTurnAtLoad, trimLevelAtThrottle, trimLevelAtAlpha } from '../../src/sim/trim.js';
 import { calibratedAirspeed, FT_PER_S_PER_KNOT } from '../../src/sim/airdata.js';
 import { atmosphere } from '../../src/sim/atmosphere.js';
+// The AoA/g limiter schedule of docs/flight-model.md 8.2, static form: the
+// most g full aft stick gives at this AoA. 9 g to 15°, 7.3 g at 20°, 1 g at 25°.
+import { limiterLoad } from '../../src/sim/fcs.js';
 
 const R2D = 180 / Math.PI;
 const kcas = (vt, h) => calibratedAirspeed(vt, h) / FT_PER_S_PER_KNOT;
-
-// The AoA/g limiter schedule of docs/flight-model.md 8.2, static form: the
-// most g full aft stick gives at this AoA. 9 g to 15°, 7.3 g at 20°, 1 g at 25°.
-// Milestone 1b moves this into the FCS module and the test imports it from there.
-function limiterLoad(alphaDeg) {
-  return 9 - 0.34 * Math.max(0, alphaDeg - 15) - 0.92 * Math.max(0, alphaDeg - 20);
-}
 
 // The most g the limiter allows at this speed: the n where n = min(9, limiter(α(n))).
 function maxLoad(vt, h) {

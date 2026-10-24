@@ -34,6 +34,18 @@ export function calibratedAirspeed(vt, h) {
   return vc;
 }
 
+// True airspeed (ft/s) that reads as the given calibrated airspeed (knots) at
+// altitude h: the inverse of calibratedAirspeed, by bisection.
+export function trueAirspeedFromKcas(kcas, h) {
+  const target = kcas * FT_PER_S_PER_KNOT;
+  let lo = 0, hi = 4000;
+  for (let i = 0; i < 60; i++) {
+    const mid = 0.5 * (lo + hi);
+    if (calibratedAirspeed(mid, h) < target) lo = mid; else hi = mid;
+  }
+  return 0.5 * (lo + hi);
+}
+
 // aux is the auxiliary output of the last derivative evaluation (for n_z, n_y).
 export function airdata(x, aux) {
   const { vt, alpha, beta } = airOf(x);
