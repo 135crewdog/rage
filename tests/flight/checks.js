@@ -60,6 +60,21 @@ export function check5() {
     text: `peak ${f(summary.nzMax, 2)} g, α max ${f(summary.alphaMax, 1)}°, α from 1.5 s on ${f(aLo, 1)}–${f(aHi, 1)}°` };
 }
 
+// 8.7: full-aft entries down to 100 KCAS, where the limiter must hold α at or
+// below 26°. Below about 110 KCAS the 1 g trim is already past the limit
+// (27.6° at 100 KCAS), so the entry starts above it: the limiter must bring
+// α down within a second and hold it while the jet sinks.
+export function check5b() {
+  const { rows, summary } = flyManoeuvre('pull', { h: 10000, kcas: 100, t: 10 });
+  const start = rows[0].alpha;
+  const tBelow = rows.find((r) => r.alpha <= 26)?.t;
+  const late = after(rows, 2);
+  const aLo = Math.min(...late.map((r) => r.alpha)), aHi = Math.max(...late.map((r) => r.alpha));
+  const pass = summary.alphaMax <= start + 0.05 && tBelow !== undefined && tBelow <= 1 && aLo >= 22 && aHi <= 26 && !summary.nan;
+  return { name: '5b full aft stick entry at 100 KCAS (trim already past the limit)', pass,
+    text: `α at start ${f(start, 1)}°, never above it, below 26° at ${tBelow === undefined ? 'never' : f(tBelow, 2) + ' s'}, held ${f(aLo, 1)}–${f(aHi, 1)}° from 2 s on while sinking to ${f(summary.altEnd, 0)} ft at ${f(summary.kcasEnd, 0)} KCAS` };
+}
+
 export function check6() {
   const { summary } = flyManoeuvre('push', { kcas: 450, t: 4.5 });
   const pass = inBand(summary.nzMin, -3.3, -2.7) && summary.nzMin >= -3.5;
@@ -128,8 +143,8 @@ export function check10() {
     text: `${f(time, 0)} s flown over ${2 * starts.length} flights, α max ${f(alphaMax, 1)}°, backstop engaged in ${backstops}, crashes ${crashes}, NaN ${nan}` };
 }
 
-export const CHECKS = [check1, check2, check3, check4, check5, check6, check7, check8, check9, check10];
+export const CHECKS = [check1, check2, check3, check4, check5, check5b, check6, check7, check8, check9, check10];
 
 export function runChecks(only) {
-  return CHECKS.filter((c, i) => !only || only.includes(i + 1)).map((c) => c());
+  return CHECKS.filter((c) => !only || only.includes(c.name.replace('check', ''))).map((c) => c());
 }
