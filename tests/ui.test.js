@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { throttleFromPosition, positionFromThrottle } from '../src/ui/throttle.js';
 import { MIL_THROTTLE } from '../src/sim/engine.js';
+import { apexFor } from '../src/hud/hud.js';
 
 const near = (a, b, tol) => assert.ok(Math.abs(a - b) <= tol, `${a} vs ${b}`);
 
@@ -13,4 +14,14 @@ test('the throttle has a detent at MIL: a gap to cross before afterburner', () =
   assert.ok(throttleFromPosition(MIL_THROTTLE + 0.13) > MIL_THROTTLE);  // past it: afterburner
   near(throttleFromPosition(1), 1, 1e-12);
   for (const t of [0, 0.3, MIL_THROTTLE, 0.8, 0.95, 1]) near(throttleFromPosition(positionFromThrottle(t)), t, 1e-12);
+});
+
+test('the ladder shows the zenith and nadir symbols once its window reaches straight up or down', () => {
+  assert.equal(apexFor(0), null);
+  assert.equal(apexFor(77), null);          // 85° bar in view, 90° not yet
+  assert.equal(apexFor(78), 'zenith');      // within 12.5° of straight up
+  assert.equal(apexFor(90), 'zenith');
+  assert.equal(apexFor(-77), null);
+  assert.equal(apexFor(-78), 'nadir');
+  assert.equal(apexFor(-90), 'nadir');
 });

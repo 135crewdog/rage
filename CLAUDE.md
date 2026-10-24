@@ -27,7 +27,7 @@ The owner's design philosophy applies to everything a person sees or touches: ht
 | 1a | Simulation core: atmosphere, aero, engine, actuators, equations of motion, trim solver, air data. All of `docs/flight-model.md` section 12.1 and 12.3 passing. No visuals. | Done |
 | 1b | Flight control system, tuned. Section 12.2 passing. A headless flight script that flies a manoeuvre and prints a time history, so tuning is visible. | Done |
 | 1c | The app: world, aircraft, camera, HUD, UI, tilt, throttle, menus, PWA, Pages. Ends with the owner flying it on the iPhone. | Flown. Tilt, crash, update prompt and pause-when-hidden confirmed; the wake lock still to confirm |
-| 1d | **Second look.** The four items under "Next round" below, from the owner's first flights. | Proposed |
+| 1d | **Second look.** The four items under "Next round" below, from the owner's first flights. | In progress: 1 done |
 
 Later milestones (terrain, sound, a bandit to dogfight) get specified when milestone 1 is done.
 
@@ -79,7 +79,7 @@ The HUD is the cockpit's head-up display, drawn over the view the way a real fig
 
 - **Airspeed** in KCAS on the left; **altitude** in feet on the right.
 - **Heading** across the top, degrees true.
-- **Pitch ladder** with the horizon line, every 5° (dashed below the horizon), rolling with the jet.
+- **Pitch ladder** with the horizon line, every 5° (dashed below the horizon), rolling with the jet. At straight up and straight down, the F-16's zenith symbol (an eight-pointed star with a tail) and nadir symbol (a hatched circle with a tail), upright on the screen.
 - **Flight path marker**: where the jet is actually going.
 - **Waterline**: where the nose points.
 - **g** (one decimal), **AoA** in degrees (one decimal), **Mach** (two decimals), and **power state**: IDLE, MIL, or AB with the afterburner percentage. The power state shows the engine, not the slider, so the spool-up lag is visible.
