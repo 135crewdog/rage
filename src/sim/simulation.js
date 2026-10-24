@@ -7,6 +7,7 @@ import { createMemory, initFromTrim, fcsStep, balancingStick } from './fcs.js';
 import { trimLevel } from './trim.js';
 import { airdata, trueAirspeedFromKcas } from './airdata.js';
 import { tgear } from './engine.js';
+import { SURFACES } from './data/aircraft.js';
 
 export class Simulation {
   // An air start: wings level, heading north, trimmed for 1 g at h (ft) and kcas.
@@ -18,6 +19,11 @@ export class Simulation {
     const vt = trueAirspeedFromKcas(kcas, h);
     const t = trimLevel(vt, h);
     if (!t.ok) throw new Error(`air start trim did not converge at ${kcas} KCAS, ${h} ft`);
+    // The solver can balance the equations with more engine or stabilator than
+    // the jet has; such a start would step straight into the limits.
+    if (t.throttle < 0 || t.throttle > 1 || Math.abs(t.el) > SURFACES.el.limit) {
+      throw new Error(`no level 1 g flight at ${kcas} KCAS, ${h} ft: trim needs throttle ${t.throttle.toFixed(2)}, stabilator ${t.el.toFixed(1)}°`);
+    }
     this.state = t.state;
     this.controls = { throttle: t.throttle, el: t.el, ail: 0, rdr: 0 };
     this.trimThrottle = t.throttle;

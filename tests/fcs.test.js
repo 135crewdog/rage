@@ -166,6 +166,13 @@ test('an air start has no jolt: the law outputs the trim stabilator and the jet 
   }
 });
 
+test('an air start the engine cannot hold is refused', () => {
+  // 110 KCAS at 50,000 ft balances only with 166 % throttle
+  assert.throws(() => new Simulation({ h: 50000, kcas: 110 }), /throttle 1\.66/);
+  // and the ordinary one is fine
+  assert.ok(new Simulation({ h: 5000, kcas: 350 }).trimThrottle < 1);
+});
+
 test('the power state reads the engine, not the slider', () => {
   const sim = new Simulation({ h: 5000, kcas: 350 });
   assert.equal(sim.powerState.label, 'IDLE');
