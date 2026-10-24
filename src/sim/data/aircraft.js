@@ -11,6 +11,7 @@ export const CBAR = 11.32;         // ft, mean aerodynamic chord
 export const XCGR = 0.35;          // reference centre of gravity, fraction of c̄
 export const XCG = 0.35;           // the jet's centre of gravity, fraction of c̄
 export const HX = 160;             // slug·ft²/s, engine angular momentum along body x
+export const JYY = 55814;          // slug·ft², pitch inertia (the FCS uses it; the EoM use c1..c9)
 
 // The book's rounded inertia constants. The check case needs these exact values.
 export const C1 = -0.770;

@@ -191,7 +191,9 @@ nmin = lerp(0, −3, clamp((q̄ − 60)/(210 − 60), 0, 1))     // q̄ in psf
 ncmd = max(ncmd, nmin)
 
 // AoA/g limiter: AoA feedback that subtracts from the command above 15°
-αeff = α + Δα_roll(|p|)        // pseudo-AoA: 0 below 20°/s roll rate, rising linearly to +5.4° at 56°/s
+αeff = α + Δα_roll(|p|) + Δα_stop(α̇, q̄, el)   // pseudo-AoA: 0 below 20°/s roll rate, rising linearly to +5.4° at 56°/s;
+                               // Δα_stop: how far α will still rise before full nose-down stabilator can stop it
+                               // (its swing time at the present α̇, plus α̇²/2·α̈max with α̈max from q̄), see below
 lim  = 0.34·max(0, αeff − 15) + 0.92·max(0, αeff − 20)    // g
 neff = ncmd − lim              // full aft gives 9 g up to 15° AoA, 7.3 g at 20°, 1 g at 25°
 
@@ -210,6 +212,8 @@ el   = clamp(el, −25, 25)      // then the actuator
 **Starting state.** At an air start, the jet is trimmed and the FCS must be too, or it starts with a jolt and loses height: set α_filt = α, every washout state to 0, the ncmd lag to 1, and I to the value that makes the law output the trim elevator, I = −(el_trim − Kq·G·q_deg − Ka·(α − α0))/G − Kp·e.
 
 **Starting gains** at q̄ = 300 psf: Kp ≈ 1.5 deg/g, Ki ≈ 3.0 deg/(g·s), Kq ≈ 0.3 deg per deg/s, Ka ≈ 0.5 deg/deg, τw = 1.0 s. These are where tuning starts, not where it ends. An independent closed-loop check of these exact laws found that the starting gains build g too slowly (about 6 g after 1.5 s at 450 KCAS, because the pitch-rate term holds the error down while the washout decays). Faster gains (τw 0.3–0.5 s, Kp 3–4, Ki 15–20, Kq 1.2–1.5) built 9 g quickly but let AoA overshoot past 29° in a slow full-aft pull. **Fast g onset and a tight AoA limit pull against each other; tune them together** (tests 3, 4 and 5 in 12.2). The tuning freedoms are the gains, τw, and a pitch-rate or AoA-rate lead in the limiter path. An alternative to the 300/q̄ schedule, if it tunes better: compute the stabilator's pitch-moment effectiveness from the tables each step and divide by it. Record which was chosen and why.
+
+**The AoA-rate lead, as tuned (milestone 1b).** The limiter looks at where α will stop, not where it is. At low dynamic pressure a full pull builds a pitch rate the stabilator cannot arrest in time: it swings at 60°/s and has little authority, so α overshoots 30° and the jet departs. The lead is the braking distance: α̇ times the stabilator's swing time to a braking position (15°), plus α̇²/(2·α̈max), where α̈max is the pitch deceleration full nose-down stabilator gives at this q̄ (from the Cm table's slope, 0.007 per degree). At 450 KCAS it is a degree or two and costs nothing; at 130 KCAS it is what keeps α under 30°.
 
 The limiter schedule and the 25° ceiling are the most important numbers in this section: they decide corner speed, instantaneous turn and the jet's low-speed behaviour. Provenance: the 15° onset and the 25° ceiling are well sourced (NASA TP-1538 and a former F-16 test pilot's public talk). The 20° breakpoint (7.3 g), the −4..+8 g request range and the pseudo-AoA magnitude come second-hand from TP-1538's figures via a flight-sim developer's notes: medium confidence.
 
@@ -254,6 +258,7 @@ If tuning the interconnect proves impractical, an acceptable fallback is a yaw-r
 
 - The limiter in 8.2 keeps AoA at or below about 25° in normal flying. The pilot cannot stall the jet with the stick alone.
 - **Backstop:** if α exceeds 30°, command full nose-down stabilator until it's back below 25°. A NASA YF-16 study used exactly this backup. It also keeps the model inside its data. **Hold the pitch integrator while the backstop is active**, and when it releases, re-initialise I so the law's output equals the current stabilator position. Without this the integrator winds up during the backstop and kicks the nose straight back up; the check saw the jet tumble.
+- **Roll-coupling protection** (added in milestone 1b; not part of the TP-1538 limiter). Rolling fast at high AoA pitches the jet up by inertia coupling, and the stabilator alone cannot always hold it: random-stick flights departed with the stabilator pinned at full nose-down while α climbed past 30°. So when the stabilator is within 8° of full nose-down and α is above 10–15°, the roll-rate command fades to zero: rolling is what is pitching the jet up, so stop rolling first. With this, the worst of 192 random 20 s flights between 110 and 700 KCAS reaches 25.5° AoA.
 - The real F-16 can still depart in extreme cases (very aggressive rolls at very low speed), into a deep stall near 60° AoA. This model has no data there, so departures are out of scope and the backstop prevents them (section 13).
 
 ### 8.6 What not to add
@@ -355,7 +360,7 @@ Each test flies the full simulation (FCS, actuators, engine) from a trimmed 1 g 
 | 1 | Wings level, stick released, 10 s | n_z within 1 ± 0.05 after 2 s; no divergence in pitch |
 | 2 | Throttle from MIL to idle, stick released, 20 s | speed falls, α rises, n_z stays 1 ± 0.1, no pitch oscillation |
 | 3 | Full aft stick at 450 KCAS | n_z ≥ 8.0 within 1.5 s and 9 ± 0.3 within 3 s; never above 9.5 |
-| 4 | Idle, level. A scripted test pilot holds altitude with pitch stick, allowed to reach full aft; run until 90 KCAS | α never above 26°; at the end α 24–25.5° and n_z 0.9–1.1 while the jet sinks |
+| 4 | Idle, level. A scripted test pilot holds altitude with pitch stick, allowed to reach full aft; run until 90 KCAS or 20 s of full aft stick (the limiter parks the jet near 110 KCAS, sinking, so 90 never comes) | α never above 26°; at the end α 24–25.5° and n_z 0.9–1.1 while the jet sinks |
 | 5 | Full aft stick at 200 KCAS | peak n_z 2.7–3.5; never above 4; α never above 26°; from 1.5 s on, α 22–25.5° |
 | 6 | Full forward stick at 450 KCAS | n_z reaches −3 ± 0.3, never below −3.5 |
 | 7 | Full right stick, 1 g, 350 KCAS | peak roll rate 270–330°/s; |β| < 3° throughout a 360° roll |
