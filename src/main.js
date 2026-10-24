@@ -17,7 +17,7 @@ import { createStickIndicator } from './ui/stick.js';
 import { createScreens } from './ui/screens.js';
 import { upInScreen, tiltOf, stickFrom, smooth, MAPPING } from './input/tilt.js';
 
-export const APP_VERSION = '0.1.7';   // the same value as VERSION in sw.js
+export const APP_VERSION = '0.1.8';   // the same value as VERSION in sw.js
 const AIR_START = { h: 5000, kcas: 350 };
 const DEBUG = new URLSearchParams(location.search).get('debug') === '1';
 
@@ -294,12 +294,14 @@ function frame(now) {
   jet.quaternion.copy(lerped.quaternion);
   const aux = sim.aux;
   look.update(elapsed);
+  const power = sim.powerState;
+  jet.plume.update(power.label === 'AB' ? power.percent / 100 : 0, elapsed);
   chase.update(elapsed, lerped.position, lerped.quaternion, { nz: aux.nz, alphaDeg: aux.alpha * 180 / Math.PI, qbar: aux.qbar }, look);
   world.update(camera.position);
   renderer.render(scene, camera);
 
   const air = sim.airdata;
-  hud.draw(air, sim.powerState, projectDirection, velocityNed(sim.state), noseNed(sim.state), look.active);
+  hud.draw(air, power, projectDirection, velocityNed(sim.state), noseNed(sim.state), look.active);
   stickIndicator.update(stick, sim.limited && stick.pitch > 0, !neutral || tilt.confidence < 0.3);
 
   frames++;
@@ -323,6 +325,8 @@ window.rage = {
   get sim() { return sim; },
   get stick() { return stick; },
   get look() { return look; },
+  get plume() { return jet.plume.mesh; },
+  set throttle(v) { throttleValue = v; throttle.set(v); },
   get neutral() { return neutral; },
   get draws() { return renderer.info.render.calls; },
 };
