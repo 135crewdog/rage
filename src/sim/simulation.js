@@ -2,7 +2,8 @@
 // main.js drives. Input reaches the simulation only here, as stick
 // (pitch, roll in −1..+1) and throttle (0..1) passed into step().
 
-import { DT, IX, N, step as dynamicsStep, derivative, airOf, crashed, R2D } from './dynamics.js';
+import { DT, IX, N, step as dynamicsStep, derivative, airOf, crashed, R2D, D2R } from './dynamics.js';
+import { fromEuler } from './quaternion.js';
 import { createMemory, initFromTrim, fcsStep, balancingStick } from './fcs.js';
 import { trimLevel } from './trim.js';
 import { airdata, trueAirspeedFromKcas } from './airdata.js';
@@ -10,12 +11,13 @@ import { tgear } from './engine.js';
 import { SURFACES } from './data/aircraft.js';
 
 export class Simulation {
-  // An air start: wings level, heading north, trimmed for 1 g at h (ft) and kcas.
-  constructor({ h = 5000, kcas = 350 } = {}) {
-    this.airStart(h, kcas);
+  // An air start: wings level, trimmed for 1 g at h (ft) and kcas, heading
+  // psi (rad, 0 north) at north and east (ft) from the origin.
+  constructor({ h = 5000, kcas = 350, psi = 0, north = 0, east = 0 } = {}) {
+    this.airStart(h, kcas, psi, north, east);
   }
 
-  airStart(h, kcas) {
+  airStart(h, kcas, psi = 0, north = 0, east = 0) {
     const vt = trueAirspeedFromKcas(kcas, h);
     const t = trimLevel(vt, h);
     if (!t.ok) throw new Error(`air start trim did not converge at ${kcas} KCAS, ${h} ft`);
@@ -25,6 +27,10 @@ export class Simulation {
       throw new Error(`no level 1 g flight at ${kcas} KCAS, ${h} ft: trim needs throttle ${t.throttle.toFixed(2)}, stabilator ${t.el.toFixed(1)}°`);
     }
     this.state = t.state;
+    // the trim is solved heading north at the origin; turn it to psi and move it
+    const q = fromEuler(0, t.alpha * D2R, psi);
+    this.state[IX.Q0] = q[0]; this.state[IX.Q1] = q[1]; this.state[IX.Q2] = q[2]; this.state[IX.Q3] = q[3];
+    this.state[IX.NORTH] = north; this.state[IX.EAST] = east;
     this.controls = { throttle: t.throttle, el: t.el, ail: 0, rdr: 0 };
     this.trimThrottle = t.throttle;
     this.time = 0;

@@ -9,18 +9,19 @@ import { positionToWorld, attitudeToWorld, vectorToWorld, METRES_PER_FOOT } from
 import * as Quat from './sim/quaternion.js';
 import { createWorld } from './render/world.js';
 import { createTerrain } from './render/terrain.js';
-import { decodeHeights, createSampler } from './render/heightmap.js';
+import { decodeHeights, createSampler, createProjection } from './render/heightmap.js';
+import { placeNamed, airStartFor } from './places.js';
 import { createAircraft } from './render/aircraft.js';
 import { createChaseCamera } from './render/camera.js';
 import { createLook, attachLook } from './input/look.js';
 import { createHud } from './hud/hud.js';
 import { createThrottle } from './ui/throttle.js';
 import { createStickIndicator } from './ui/stick.js';
-import { createScreens } from './ui/screens.js';
+import { createScreens, loadPlace } from './ui/screens.js';
 import { upInScreen, tiltOf, stickFrom, smooth, MAPPING } from './input/tilt.js';
 
-export const APP_VERSION = '0.1.13';   // the same value as VERSION in sw.js
-const AIR_START = { h: 5000, kcas: 350 };   // h is above the ground at the start point once the terrain is known
+export const APP_VERSION = '0.1.14';   // the same value as VERSION in sw.js
+const AIR_START = { h: 5000, kcas: 350 };   // h is above the ground at the chosen place once the terrain is known
 const DEBUG = new URLSearchParams(location.search).get('debug') === '1';
 
 // ---- renderer, world, jet, camera, HUD ----
@@ -52,6 +53,7 @@ async function loadTerrain() {
   const [base, atlas] = await Promise.all([load(region.base), load(region.atlas)]);
   return {
     sampler: createSampler(region, { base: base.heights, atlas: atlas.heights }),
+    projection: createProjection(region),
     mesh: createTerrain(scene, region, { base: base.image, atlas: atlas.image }, world),
     region,
   };
@@ -99,9 +101,11 @@ let throttleValue = sim.trimThrottle;
 const stick = { pitch: 0, roll: 0 };
 // Portrait: the rotate screen, whatever else was asked for.
 const portrait = matchMedia('(orientation: portrait)');
+let place = loadPlace();         // the place to fly from, chosen on the start screen
 const screens = createScreens({
   version: APP_VERSION,
   onFly: fly, onResume: resume, onRecenter: recenter, onFlyAgain: flyAgain, onUpdate: applyUpdate,
+  onPlace: (name) => { place = name; if (mode === 'start' && terrain) airStart(); },
   locked: () => (portrait.matches ? 'rotate' : null),
 });
 const throttle = createThrottle(document.getElementById('throttle'), throttleValue, (v) => { throttleValue = v; });
@@ -116,8 +120,8 @@ function poseOf(state) {
 }
 
 function airStart() {
-  const ground = terrain ? terrain.sampler.heightAt(0, 0) / METRES_PER_FOOT : 0;
-  sim = new Simulation({ h: ground + AIR_START.h, kcas: AIR_START.kcas });
+  const start = terrain ? airStartFor(placeNamed(place), terrain.projection, terrain.sampler) : { h: AIR_START.h };
+  sim = new Simulation({ ...start, kcas: AIR_START.kcas });
   carry = 0;
   prevPose = pose = poseOf(sim.state);
   throttleValue = sim.trimThrottle;
@@ -370,6 +374,7 @@ window.rage = {
   get surfaces() { return jet.surfaces; },
   get ground() { return groundFt(sim.state); },
   get terrain() { return terrain; },
+  get place() { return place; },
   set throttle(v) { throttleValue = v; throttle.set(v); },
   get neutral() { return neutral; },
   get draws() { return renderer.info.render.calls; },

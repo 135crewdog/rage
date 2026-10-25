@@ -29,7 +29,7 @@ The owner's design philosophy applies to everything a person sees or touches: ht
 | 1c | The app: world, aircraft, camera, HUD, UI, tilt, throttle, menus, PWA, Pages. Ends with the owner flying it on the iPhone. | Flown. Tilt, crash, update prompt and pause-when-hidden confirmed; the wake lock still to confirm |
 | 1d | **Second look.** Zenith and nadir symbols, Credits row, look-around by dragging, afterburner plume. | Done |
 | 2 | **Terrain.** Zion National Park from real elevation data, the crash on the ground that is there, radar altitude on the HUD; plus the recenter confirmation and movable control surfaces. The section "Milestone 2" below. | Flown. The tile's edge looked wrong; milestone 3 fixes it |
-| 3 | **Places.** A coarse base tile from Las Vegas to Lake Powell with five fine patches at the places worth flying, a place to choose on the start screen, and the F-16's steerpoint and bullseye on the HUD. The section "Milestone 3" below. | In progress: 1 built |
+| 3 | **Places.** A coarse base tile from Las Vegas to Lake Powell with five fine patches at the places worth flying, a place to choose on the start screen, and the F-16's steerpoint and bullseye on the HUD. The section "Milestone 3" below. | In progress: 1 and 2 built |
 
 Later milestones (sound, a bandit to dogfight) get specified when milestone 3 is done.
 
@@ -46,6 +46,7 @@ manifest.webmanifest
 sw.js                     service worker
 icons/                    app icons
 src/main.js               composition root: wires sim, input, renderer, HUD and UI together
+src/places.js             the places to fly and their air starts
 src/sim/                  the simulation: pure JS, no DOM, no three.js, no browser APIs
 src/sim/data/             the F-16 tables as JS modules, re-keyed from docs/f16-data.md
 src/input/                tilt and look-around; browser-facing, maths kept pure and tested
@@ -69,7 +70,7 @@ tests/browser/smoke.js    loads the app in headless Chromium and flies a few sec
 
 - **The jet** is a low-poly F-16C model, “F 16 C” by Usman Zia, CC BY 4.0, converted to glTF in `models/f16c.glb` and credited in `models/CREDITS.md` and under Credits in Settings. It is loaded with three.js's GLTFLoader addon, copied into `vendor/three/examples/jsm/` with its two helpers. Its stabilators, flaperons and rudder are separate parts, cut along the author's hinge lines by `models/cut-surfaces.py`, and move every frame to the simulation's actuator positions; the stabilators also move differentially with roll, a quarter of the flaperon deflection, as the real tails do. Behind the nozzle, an afterburner plume (`src/render/plume.js`): two additive cones with shock diamonds, growing with the burner fraction the engine reports, hidden at dry power. Control surfaces don't need to move in milestone 1.
 - **The world** is the country from Las Vegas to Lake Powell and from the Grand Canyon to Bryce Canyon: a coarse base tile of real elevation data with five fine patches at Zion, the Grand Canyon, Bryce, Lake Powell and Las Vegas (`terrain/`, see its CREDITS.md), drawn as a geometry clipmap by `src/render/terrain.js`, coloured by height and slope with a fine grain; the same heightmaps read on the CPU by `src/render/heightmap.js` for the crash and the radar altitude. A sky that fades to a horizon colour, fog that hides the far edge, sun from above, no shadows.
-- **Air start:** 5,000 ft above the ground over Springdale, at the mouth of Zion Canyon, 350 KCAS, wings level, heading north up the canyon, trimmed for 1 g. The throttle slider starts at the trim setting. The FCS starts trimmed too (`docs/flight-model.md` 8.2).
+- **Air start:** 5,000 ft above the ground at the place chosen on the start screen (`src/places.js`), pointed at the sight: Zion is over Springdale heading north up the canyon; 350 KCAS, wings level, trimmed for 1 g. The throttle slider starts at the trim setting. The FCS starts trimmed too (`docs/flight-model.md` 8.2).
 - **Crash:** below the ground that is there the flight ends. The screen says "Crashed" with one button, "Fly again", which restarts from the air start.
 
 ## Camera
@@ -99,7 +100,7 @@ Minimal, and as unobtrusive as the controls of a real cockpit:
 
 Screens:
 
-- **Start.** The name, and one button: **Fly**. Tapping it asks for motion access, keeps the screen awake and starts the flight. The motion permission request is the first statement in that tap's handler, before anything else, or iOS refuses it.
+- **Start.** The name, a list of the five places by their full names (remembered as `rage.place`), and one button: **Fly**. Tapping it asks for motion access, keeps the screen awake and starts the flight at the chosen place; Fly again returns there. The motion permission request is the first statement in that tap's handler, before anything else, or iOS refuses it.
 - **Pause.** Resume, **Recenter controls**, Fly again (back to the air start), Settings. Recentering confirms itself: the button reads "Recentered" with a tick for a second, and the stick indicator glows once as its cross snaps to centre.
 - **Settings.** Theme: Light, Dark, Auto (Auto follows the phone). The app's version. A Credits row that expands in place to the jet's credit and licence. Done.
 - **Rotate your phone.** Shown whenever the phone is in portrait. It also says: if it won't rotate, turn off Portrait Orientation Lock in Control Center.
@@ -165,12 +166,12 @@ Agreed with the owner after flying milestone 2. Beyond the Zion tile's last row 
    - **The lookup.** The ground height at a point is the finest patch that covers it, else the base. Across the outer 3 km of each patch the two are blended so no step shows; across the outer 10 km of the base the ground eases to one flat height, so the streaks never return. The GPU and the CPU do the same lookup from the same images, as now. The clipmap, the crash and the radar altitude don't change.
    - **Colour** by height and slope across the whole region's heights, from 200 m at Lake Mead to 3,400 m on the plateaus, with the same four bands. Lakes are flat in the data (SRTM saw Lake Powell and Lake Mead full in February 2000) and read as flat valley floor; no water in this round.
    - **Far coordinates.** Las Vegas is 250 km from Zion. The terrain shader works relative to the camera, so single-precision positions stay exact at that distance.
-2. **Choose a place.** The start screen gains a row of five place names under the title; the choice is remembered (`rage.place`), and Fly and Fly again start there: 5,000 ft above the ground, 350 KCAS, wings level, trimmed, pointed at the sight.
+2. **Choose a place.** The start screen gains a list of the five places under the title, by their full names (Zion National Park, Grand Canyon National Park, Bryce Canyon National Park, Lake Powell, Nellis AFB); the choice is remembered (`rage.place`), and Fly and Fly again start there: 5,000 ft above the ground, 350 KCAS, wings level, trimmed, pointed at the sight.
    - **Zion:** over Springdale, heading north up the canyon, as now.
    - **Grand Canyon:** over Grand Canyon Village on the South Rim, heading north across the gorge toward the North Rim.
    - **Bryce:** over the plateau west of Bryce Point, heading east over the amphitheatre toward the Paria valley.
-   - **Lake Powell:** over the Colorado below Horseshoe Bend, heading north-east over Page and the dam and up the lake.
-   - **Las Vegas:** over Nellis, heading south-west down the Strip, with Lake Mead and Hoover Dam behind.
+   - **Lake Powell:** over the Echo Cliffs south-east of Page, heading north-west over Horseshoe Bend to the dam and the lake. (The river below Horseshoe Bend is 6 km from the patch's edge, too close to the blend band.)
+   - **Nellis AFB:** over Nellis, heading south-west down the Strip, with Lake Mead and Hoover Dam behind.
    - **Tests:** the lookup (patch, base, blend, outer fade) and each place's air start in `node --test`; the smoke test chooses a place and checks the air start is 5,000 ft above the ground there.
 3. **Steerpoint and bullseye.** Navigation the way the F-16 does it, with no menu. The five places form a fixed loop, Zion, Bryce, Lake Powell, Grand Canyon, Las Vegas and back to Zion, and choosing a place is choosing where to join it. The HUD shows one steerpoint, the next place on the loop: the jet's steerpoint diamond on the sight when it is in the view; when it isn't, the jet's tadpole, a small circle with a tail pointing the way, near the flight path marker; and the range in nautical miles in the lower right. Passing within 2 nm steps to the next place, as the jet's auto-sequencing does, so the loop can be flown round (an hour and four minutes at 400 knots). The bullseye is a fixed point, Springdale for now, one constant that the owner may move later; the HUD's lower left shows the jet's bearing and range from it, two numbers, as the jet does. The start screen shows each place's bullseye position next to its name ("Bryce 058 for 47"), so the other places can be found the way a pilot finds them.
    - **Tests:** the loop's legs (heading and range from the places' positions), the auto-step, the bullseye numbers, and the tadpole's direction in `node --test`; the smoke test reads the steerpoint range at the air start.
