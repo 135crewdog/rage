@@ -27,10 +27,11 @@ export function createProjection(region) {
 
 // region: the parsed region.json; heights: { base, atlas } as decodeHeights
 // gives them. heightAt(x, z): the ground height in metres at world x (east)
-// and z (south, so −north): the finest patch that covers the point, blended
-// into the base across the band inside its edge, else the base; and across
-// the band inside the base's own edge the ground eases to one flat height,
-// which it keeps beyond.
+// and z (south, so −north): the base, with each patch that covers the point
+// laid over it in turn, coarsest first, blended in across the band inside
+// its edge, so where patches overlap the finer one shows and every join is
+// smooth; and across the band inside the base's own edge the ground eases to
+// one flat height, which it keeps beyond.
 export function createSampler(region, heights) {
   const { base, atlas, patches, blend, fade } = region;
   const baseScale = (base.max - base.min) / 65535, atlasScale = (atlas.max - atlas.min) / 65535;
@@ -45,19 +46,18 @@ export function createSampler(region, heights) {
   }
   const baseAt = (ix, iz) => base.min + heights.base[iz * base.w + ix] * baseScale;
   const patchAt = (p) => (ix, iz) => atlas.min + heights.atlas[(p.py + iz) * atlas.w + p.px + ix] * atlasScale;
-  const sides = patches.map((p) => (p.size - 1) * p.post);
+  const order = [...patches].sort((a, b) => b.post - a.post);   // coarsest first, so the finest ends on top
   // how far inside a rectangle a point is, as a fraction of the band, 0 outside and 1 past the band
   const inside = (x, z, x0, z0, w, h, band) => Math.min(1, Math.max(0, Math.min(x - x0, x0 + w - x, z - z0, z0 + h - z) / band));
   function heightAt(x, z) {
     let h = bilinear(baseAt, base.w, base.h, (x - base.x0) / base.post, (z - base.z0) / base.post);
-    let best = null, weight = 0;
-    patches.forEach((p, i) => {
-      const w = inside(x, z, p.x0, p.z0, sides[i], sides[i], blend);
-      if (w > weight) { weight = w; best = p; }
-    });
-    if (best) h += weight * (bilinear(patchAt(best), best.size, best.size, (x - best.x0) / best.post, (z - best.z0) / best.post) - h);
+    for (const p of order) {
+      const side = (p.size - 1) * p.post;
+      const w = inside(x, z, p.x0, p.z0, side, side, blend);
+      if (w > 0) h += w * (bilinear(patchAt(p), p.size, p.size, (x - p.x0) / p.post, (z - p.z0) / p.post) - h);
+    }
     const outer = inside(x, z, base.x0, base.z0, (base.w - 1) * base.post, (base.h - 1) * base.post, fade);
     return base.flat + outer * (h - base.flat);
   }
-  return { heightAt, post: patches[0]?.post ?? base.post };
+  return { heightAt, post: Math.min(base.post, ...patches.map((p) => p.post)) };
 }
