@@ -28,9 +28,10 @@ The owner's design philosophy applies to everything a person sees or touches: ht
 | 1b | Flight control system, tuned. Section 12.2 passing. A headless flight script that flies a manoeuvre and prints a time history, so tuning is visible. | Done |
 | 1c | The app: world, aircraft, camera, HUD, UI, tilt, throttle, menus, PWA, Pages. Ends with the owner flying it on the iPhone. | Flown. Tilt, crash, update prompt and pause-when-hidden confirmed; the wake lock still to confirm |
 | 1d | **Second look.** Zenith and nadir symbols, Credits row, look-around by dragging, afterburner plume. | Done |
-| 2 | **Terrain.** Zion National Park from real elevation data, the crash on the ground that is there, radar altitude on the HUD; plus the recenter confirmation and movable control surfaces. The section "Milestone 2" below. | Built; waiting for the owner's flights |
+| 2 | **Terrain.** Zion National Park from real elevation data, the crash on the ground that is there, radar altitude on the HUD; plus the recenter confirmation and movable control surfaces. The section "Milestone 2" below. | Flown. The tile's edge looked wrong; milestone 3 fixes it |
+| 3 | **Places.** A coarse base tile from Las Vegas to Lake Powell with five fine patches at the places worth flying, a place to choose on the start screen, and the F-16's steerpoint and bullseye on the HUD. The section "Milestone 3" below. | Agreed; waiting for the elevation downloads |
 
-Later milestones (sound, a bandit to dogfight) get specified when milestone 2 is done.
+Later milestones (sound, a bandit to dogfight) get specified when milestone 3 is done.
 
 ## Files
 
@@ -154,7 +155,37 @@ Agreed with the owner after milestone 1d. Each numbered item is its own pull req
    - **Radar altitude** on the HUD in the F-16's AUTO mode: below 1,500 ft above the ground the altitude window shows radar altitude with an R; above that, barometric as now.
    - **Tests:** the height sampler and the crash and radar-altitude rules in `node --test`; the smoke test checks the terrain draws and the radar altitude reads.
 
-Settled at the same time: the transonic patch in `docs/flight-model.md` 5.2 stays; milestone 3 (sound, then a bandit) waits until this is done.
+Settled at the same time: the transonic patch in `docs/flight-model.md` 5.2 stays.
+
+## Milestone 3
+
+Agreed with the owner after flying milestone 2. Beyond the Zion tile's last row of survey posts the ground was extruded in straight streaks, and the south edge is only 18 km from the air start. The fix is more real ground, fine at the places worth flying and coarse between them. Sound and the bandit move back one milestone each. Three pull requests, in this order, once the owner has uploaded the downloads in the table below.
+
+1. **A region and its places.** One coarse base tile of SRTM 90 m data covers the country from Las Vegas to Lake Powell and from the Grand Canyon to Bryce Canyon, about 420 by 270 km, at about 200 m between posts. Inside it, five fine patches of SRTM 30 m data at 60 to 80 m between posts: Zion (the tile of milestone 2); the Grand Canyon's inner gorge from the South Rim to the North Rim; Bryce Canyon with Cedar Breaks and the high plateaus between; Page with Glen Canyon Dam, Horseshoe Bend and the lower lake; Las Vegas with Nellis AFB, the Strip, Hoover Dam and Lake Mead. The base is one image; the patches sit side by side in one atlas image, with a JSON file saying where each lies. `terrain/make-heightmap.py` converts them all in one map projection, so the patches land on the base exactly; `terrain/CREDITS.md` lists every tile. About 16 MB in all, cached for offline play like everything else. Grand Junction, Moab and Monument Valley were considered and left out: too far for the ground between.
+   - **The lookup.** The ground height at a point is the finest patch that covers it, else the base. Across the outer 3 km of each patch the two are blended so no step shows; across the outer 10 km of the base the ground eases to one flat height, so the streaks never return. The GPU and the CPU do the same lookup from the same images, as now. The clipmap, the crash and the radar altitude don't change.
+   - **Colour** by height and slope across the whole region's heights, from 200 m at Lake Mead to 3,400 m on the plateaus, with the same four bands. Lakes are flat in the data (SRTM saw Lake Powell and Lake Mead full in February 2000) and read as flat valley floor; no water in this round.
+   - **Far coordinates.** Las Vegas is 250 km from Zion. The terrain shader works relative to the camera, so single-precision positions stay exact at that distance.
+2. **Choose a place.** The start screen gains a row of five place names under the title; the choice is remembered (`rage.place`), and Fly and Fly again start there: 5,000 ft above the ground, 350 KCAS, wings level, trimmed, pointed at the sight.
+   - **Zion:** over Springdale, heading north up the canyon, as now.
+   - **Grand Canyon:** over Grand Canyon Village on the South Rim, heading north across the gorge toward the North Rim.
+   - **Bryce:** over the plateau west of Bryce Point, heading east over the amphitheatre toward the Paria valley.
+   - **Lake Powell:** over the Colorado below Horseshoe Bend, heading north-east over Page and the dam and up the lake.
+   - **Las Vegas:** over Nellis, heading south-west down the Strip, with Lake Mead and Hoover Dam behind.
+   - **Tests:** the lookup (patch, base, blend, outer fade) and each place's air start in `node --test`; the smoke test chooses a place and checks the air start is 5,000 ft above the ground there.
+3. **Steerpoint and bullseye.** Navigation the way the F-16 does it, with no menu. The five places form a fixed loop, Zion, Bryce, Lake Powell, Grand Canyon, Las Vegas and back to Zion, and choosing a place is choosing where to join it. The HUD shows one steerpoint, the next place on the loop: the jet's steerpoint diamond on the sight when it is in the view; when it isn't, the jet's tadpole, a small circle with a tail pointing the way, near the flight path marker; and the range in nautical miles in the lower right. Passing within 2 nm steps to the next place, as the jet's auto-sequencing does, so the loop can be flown round (an hour and four minutes at 400 knots). The bullseye is a fixed point, Springdale for now, one constant that the owner may move later; the HUD's lower left shows the jet's bearing and range from it, two numbers, as the jet does. The start screen shows each place's bullseye position next to its name ("Bryce 058 for 47"), so the other places can be found the way a pilot finds them.
+   - **Tests:** the loop's legs (heading and range from the places' positions), the auto-step, the bullseye numbers, and the tadpole's direction in `node --test`; the smoke test reads the steerpoint range at the air start.
+
+The downloads, from OpenTopography as for milestone 2 (the boxes carry a small margin):
+
+| Tile | Data | North | South | West | East |
+|---|---|---|---|---|---|
+| Base | SRTM GL3 (90 m) | 38.10 | 35.70 | -115.50 | -110.80 |
+| Grand Canyon, 60 km | SRTM GL1 (30 m) | 36.41 | 35.83 | -112.45 | -111.75 |
+| Bryce and Cedar Breaks, 80 km | SRTM GL1 (30 m) | 38.00 | 37.24 | -112.97 | -112.03 |
+| Page and Lake Powell, 60 km | SRTM GL1 (30 m) | 37.24 | 36.66 | -111.61 | -110.89 |
+| Las Vegas and Nellis, 80 km | SRTM GL1 (30 m) | 36.53 | 35.77 | -115.42 | -114.48 |
+
+Zion's patch is the milestone 2 tile, regenerated from its download in the new projection.
 
 ## Parked
 
@@ -163,7 +194,7 @@ Discussed, not adopted, might come back. Ask before building.
 - **Double-tap the stick indicator to trim.** For a future aircraft without the F-16's automatic trim.
 - **A touch-stick fallback** when motion access is denied. The owner finds on-screen sticks unnatural.
 - **Bank compensation as an "easy mode."** The real F-16 has none.
-- **Sound, a bandit to dogfight.** Likely next milestones.
+- **Sound, a bandit to dogfight.** Milestones 4 and 5.
 - **Takeoff and landing**, with the FCS's gear-down laws.
 - **NASA's high-fidelity data**, which would allow leading-edge flaps, departures and the deep stall.
 - **A heavier, more powerful F-16C** (real half-fuel weight with an F110-GE-129 engine). The book's lighter jet with its weaker engine already turns like a real one; changing one without the other would break that.
