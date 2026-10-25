@@ -5,9 +5,11 @@
 import * as THREE from 'three';
 import { Simulation, stepsFor, DT } from './sim/simulation.js';
 import { IX, quaternionOf } from './sim/dynamics.js';
-import { positionToWorld, attitudeToWorld, vectorToWorld } from './render/frames.js';
+import { positionToWorld, attitudeToWorld, vectorToWorld, METRES_PER_FOOT } from './render/frames.js';
 import * as Quat from './sim/quaternion.js';
 import { createWorld } from './render/world.js';
+import { createTerrain } from './render/terrain.js';
+import { decodeHeights, createSampler } from './render/heightmap.js';
 import { createAircraft } from './render/aircraft.js';
 import { createChaseCamera } from './render/camera.js';
 import { createLook, attachLook } from './input/look.js';
@@ -17,8 +19,8 @@ import { createStickIndicator } from './ui/stick.js';
 import { createScreens } from './ui/screens.js';
 import { upInScreen, tiltOf, stickFrom, smooth, MAPPING } from './input/tilt.js';
 
-export const APP_VERSION = '0.1.11';   // the same value as VERSION in sw.js
-const AIR_START = { h: 5000, kcas: 350 };
+export const APP_VERSION = '0.1.12';   // the same value as VERSION in sw.js
+const AIR_START = { h: 5000, kcas: 350 };   // h is above the ground at the start point once the terrain is known
 const DEBUG = new URLSearchParams(location.search).get('debug') === '1';
 
 // ---- renderer, world, jet, camera, HUD ----
@@ -31,8 +33,31 @@ const world = createWorld(scene);
 const jet = createAircraft();
 scene.add(jet);
 // Fly waits for the model: on a first visit it may still be downloading.
-jet.ready.then(() => { document.getElementById('fly').disabled = false; },
-  (e) => { console.error(e); document.getElementById('jet-error').hidden = false; });
+// The ground: Zion, from terrain/zion.png (see heightmap.js). The image is
+// drawn once to read its posts for the CPU sampler; the GPU reads it directly.
+let terrain = null;
+async function loadTerrain() {
+  const meta = await (await fetch('./terrain/zion.json')).json();
+  const image = new Image();
+  image.src = './terrain/zion.png';
+  await image.decode();
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = meta.size;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  ctx.drawImage(image, 0, 0);
+  const heights = decodeHeights(ctx.getImageData(0, 0, meta.size, meta.size).data, meta.size);
+  return { sampler: createSampler(heights, meta), mesh: createTerrain(scene, image, meta, world) };
+}
+// ground height in feet under a simulation state (north, east in feet)
+function groundFt(state) {
+  if (!terrain) return 0;
+  return terrain.sampler.heightAt(state[IX.EAST] * METRES_PER_FOOT, -state[IX.NORTH] * METRES_PER_FOOT) / METRES_PER_FOOT;
+}
+Promise.all([jet.ready, loadTerrain()]).then(([, t]) => {
+  terrain = t;
+  airStart();                                   // now 5,000 ft above the ground that is there
+  document.getElementById('fly').disabled = false;
+}, (e) => { console.error(e); document.getElementById('jet-error').hidden = false; });
 const chase = createChaseCamera(camera);
 const look = createLook();                  // look-around by dragging the view
 attachLook(view, look, () => mode === 'flying');
@@ -83,7 +108,8 @@ function poseOf(state) {
 }
 
 function airStart() {
-  sim = new Simulation(AIR_START);
+  const ground = terrain ? terrain.sampler.heightAt(0, 0) / METRES_PER_FOOT : 0;
+  sim = new Simulation({ h: ground + AIR_START.h, kcas: AIR_START.kcas });
   carry = 0;
   prevPose = pose = poseOf(sim.state);
   throttleValue = sim.trimThrottle;
@@ -286,7 +312,7 @@ function frame(now) {
       prevPose = pose;
       sim.step(stick, throttleValue, DT);
       pose = poseOf(sim.state);
-      if (sim.crashed) { crash(); break; }
+      if (sim.crashed || sim.state[IX.H] <= groundFt(sim.state)) { crash(); break; }   // the ground that is there
     }
   }
 
@@ -303,9 +329,11 @@ function frame(now) {
   jet.surfaces.set(sfc.el, sfc.ail, sfc.rdr);
   chase.update(elapsed, lerped.position, lerped.quaternion, { nz: aux.nz, alphaDeg: aux.alpha * 180 / Math.PI, qbar: aux.qbar }, look);
   world.update(camera.position);
+  if (terrain) terrain.mesh.update(camera.position);
   renderer.render(scene, camera);
 
   const air = sim.airdata;
+  if (terrain) air.ground = groundFt(sim.state);
   hud.draw(air, power, projectDirection, velocityNed(sim.state), noseNed(sim.state), look.active);
   if (mode === 'flying') stickIndicator.update(stick, sim.limited && stick.pitch > 0, !neutral || tilt.confidence < 0.3);   // under a screen it holds, so a recenter's glow waits for flight
 
@@ -332,6 +360,7 @@ window.rage = {
   get look() { return look; },
   get plume() { return jet.plume.mesh; },
   get surfaces() { return jet.surfaces; },
+  get ground() { return groundFt(sim.state); },
   set throttle(v) { throttleValue = v; throttle.set(v); },
   get neutral() { return neutral; },
   get draws() { return renderer.info.render.calls; },

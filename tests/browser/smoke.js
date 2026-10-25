@@ -76,6 +76,9 @@ async function main() {
     // tap Fly: no permission prompt in Chromium, so flight starts at once
     await page.click('#fly');
     await page.waitForFunction(() => window.rage.mode === 'flying');
+    // the terrain is under the jet: the air start is 5,000 ft above the ground there
+    const startAgl = await page.evaluate(() => window.rage.sim.airdata.altitude - window.rage.ground);
+    assert.ok(Math.abs(startAgl - 5000) < 60, `air start 5,000 ft above the ground: ${startAgl}`);
     assert.equal(await page.evaluate(() => document.getElementById('controls').hidden), false);
 
     // feed tilt until the simulation has flown `seconds` of its own time. The

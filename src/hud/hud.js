@@ -35,6 +35,18 @@ function rightOf(headingDeg, pitchDeg) {
 // Which of the two apex symbols the ladder's window has reached, if either:
 // the zenith when straight up is within LADDER_RANGE of the nose, the nadir
 // when straight down is.
+export const RADAR_BELOW_FT = 1500;   // the F-16 HUD's AUTO mode shows radar altitude below this
+
+// What the altitude window shows: barometric altitude, or below RADAR_BELOW_FT
+// above the ground the radar altitude with an R, rounded to 10 ft as the radar
+// altimeter reads. Feet in, feet out. Without a ground height, barometric.
+export function altitudeDisplay(altitudeFt, groundFt) {
+  if (groundFt === undefined) return { radar: false, value: Math.round(altitudeFt) };
+  const agl = altitudeFt - groundFt;
+  if (agl < RADAR_BELOW_FT) return { radar: true, value: Math.max(0, Math.round(agl / 10) * 10) };
+  return { radar: false, value: Math.round(altitudeFt) };
+}
+
 export function apexFor(pitchDeg) {
   if (pitchDeg >= 90 - LADDER_RANGE) return 'zenith';
   if (pitchDeg <= -90 + LADDER_RANGE) return 'nadir';
@@ -94,7 +106,7 @@ export function createHud(canvas) {
     });
   }
 
-  // air: the airdata object; power: { label, percent }; project: a NED
+  // air: the airdata object, plus ground (ft) when the terrain is known; power: { label, percent }; project: a NED
   // direction → { x, y, visible } on the screen; velocity and nose: unit NED
   // directions of the flight path and the body x axis; looking: true while
   // the view is swung away from the chase position.
@@ -192,7 +204,8 @@ export function createHud(canvas) {
     stroke(() => { ctx.moveTo(left + 46, cy); ctx.lineTo(left + 54, cy - 5); ctx.lineTo(left + 54, cy + 5); ctx.closePath(); });
     text(String(Math.round(air.kcas)), left + 42, cy, 'right', 20);
     stroke(() => { ctx.moveTo(right - 46, cy); ctx.lineTo(right - 54, cy - 5); ctx.lineTo(right - 54, cy + 5); ctx.closePath(); });
-    text(String(Math.round(air.altitude)), right - 42, cy, 'left', 20);
+    const alt = altitudeDisplay(air.altitude, air.ground);
+    text((alt.radar ? 'R ' : '') + alt.value, right - 42, cy, 'left', 20);
 
     // g, AoA, Mach and the engine's power state, lower left
     text(`${air.nz.toFixed(1)} G`, left, bottom - 54, 'left', 14);
