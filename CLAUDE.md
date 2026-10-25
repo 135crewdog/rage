@@ -194,6 +194,7 @@ Zion's patch is the milestone 2 tile, regenerated from its download in the new p
 
 Discussed, not adopted, might come back. Ask before building.
 
+- **Recut the flaperons along the artist's hinge line.** The first cut was a straight line 10.45 m from the nose; the model's own line slants from 10.04 m at the root to 10.61 m at the tip and the flaperon ends 3.67 m off the centreline, not 3.9. The owner also saw something wrong with the rudder, not yet identified. Next, after milestone 3.
 - **Double-tap the stick indicator to trim.** For a future aircraft without the F-16's automatic trim.
 - **A touch-stick fallback** when motion access is denied. The owner finds on-screen sticks unnatural.
 - **Bank compensation as an "easy mode."** The real F-16 has none.
