@@ -16,16 +16,17 @@ const N = 96;          // cells per side of every level
 const SPACING = 10;    // m, the finest level's cell
 
 // Both shaders read the heightmaps the same way heightmap.js does: 16-bit
-// posts in red and green, bilinear between them; the finest patch that
-// covers the point blended into the base across the band inside its edge,
-// and the base eased to one flat height across the band inside its own.
+// posts in red and green, bilinear between them; each patch covering the
+// point laid over the base in turn, coarsest first, blended in across the
+// band inside its edge; and the base eased to one flat height across the
+// band inside its own.
 function heightGlsl(patches) {
   return `
   uniform sampler2D baseMap, atlasMap;
   uniform vec4 baseGrid;          // x0, z0, post, flat
   uniform vec2 baseSize, atlasSize, baseRange, atlasRange;   // posts; min, max − min
   uniform float blend, fade;
-  uniform vec4 patchRect[${patches}];   // x0, z0, side, post
+  uniform vec4 patchRect[${patches}];   // x0, z0, side, post; coarsest first
   uniform vec4 patchPix[${patches}];    // px, py, size
   float decode(vec4 t, vec2 range) { return range.x + (t.r * 65280.0 + t.g * 255.0) / 65535.0 * range.y; }
   float basePost(vec2 ij) { return decode(texture2D(baseMap, (ij + 0.5) / baseSize), baseRange); }
@@ -45,22 +46,18 @@ function heightGlsl(patches) {
     vec2 d = min(xz - o, o + wh - xz);
     return clamp(min(d.x, d.y) / band, 0.0, 1.0);
   }
-  // the finest patch covering xz: its weight, and its rect and pix by reference
-  float choose(vec2 xz, out vec4 rect, out vec4 pix) {
-    float weight = 0.0; rect = vec4(0.0); pix = vec4(0.0);
-    for (int i = 0; i < ${patches}; i++) {
-      float w = inside(xz, patchRect[i].xy, patchRect[i].zz, blend);
-      if (w > weight) { weight = w; rect = patchRect[i]; pix = patchPix[i]; }
-    }
-    return weight;
+  // each patch's weight at xz: how far inside its edge band the point is
+  void weigh(vec2 xz, out float w[${patches}]) {
+    for (int i = 0; i < ${patches}; i++) w[i] = inside(xz, patchRect[i].xy, patchRect[i].zz, blend);
   }
-  float heightWith(vec2 xz, float weight, vec4 rect, vec4 pix) {
+  // the ground at xz with the patches weighed at w (the point's own, or a neighbour's for a slope)
+  float heightWith(vec2 xz, float w[${patches}]) {
     float h = baseHeight(xz);
-    if (weight > 0.0) h += weight * (patchHeight(xz, rect, pix) - h);
+    for (int i = 0; i < ${patches}; i++) if (w[i] > 0.0) h += w[i] * (patchHeight(xz, patchRect[i], patchPix[i]) - h);
     float outer = inside(xz, baseGrid.xy, (baseSize - 1.0) * baseGrid.z, fade);
     return baseGrid.w + outer * (h - baseGrid.w);
   }
-  float height(vec2 xz) { vec4 rect, pix; float w = choose(xz, rect, pix); return heightWith(xz, w, rect, pix); }`;
+  float height(vec2 xz) { float w[${patches}]; weigh(xz, w); return heightWith(xz, w); }`;
 }
 
 const vertexShader = (patches) => `${heightGlsl(patches)}
@@ -87,11 +84,11 @@ const fragmentShader = (patches) => `${heightGlsl(patches)}
     return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y);
   }
   void main() {
-    // the slope from the heightmaps at a fixed 30 m step, the same at every level; one patch choice serves all four reads
+    // the slope from the heightmaps at a fixed 30 m step, the same at every level; the point's patch weights serve all four reads
     float d = 30.0;
-    vec4 rect, pix; float w = choose(wp.xz, rect, pix);
-    float hx = heightWith(wp.xz + vec2(d, 0.0), w, rect, pix) - heightWith(wp.xz - vec2(d, 0.0), w, rect, pix);
-    float hz = heightWith(wp.xz + vec2(0.0, d), w, rect, pix) - heightWith(wp.xz - vec2(0.0, d), w, rect, pix);
+    float w[${patches}]; weigh(wp.xz, w);
+    float hx = heightWith(wp.xz + vec2(d, 0.0), w) - heightWith(wp.xz - vec2(d, 0.0), w);
+    float hz = heightWith(wp.xz + vec2(0.0, d), w) - heightWith(wp.xz - vec2(0.0, d), w);
     vec3 n = normalize(vec3(-hx, 2.0 * d, -hz));
     float slope = 1.0 - n.y;
     // the region's bands by height above the sea: desert floor, green valleys, sandstone walls, pale plateaus; grey where it is steep
@@ -155,7 +152,8 @@ function heightTexture(image) {
 // region: the parsed region.json; images: { base, atlas } the two heightmap
 // images; world: the world's fog and sun to match.
 export function createTerrain(scene, region, images, world) {
-  const { base, atlas, patches } = region;
+  const { base, atlas } = region;
+  const patches = [...region.patches].sort((a, b) => b.post - a.post);   // coarsest first, so the finest ends on top
   const shared = {
     baseMap: { value: heightTexture(images.base) }, atlasMap: { value: heightTexture(images.atlas) },
     baseGrid: { value: new THREE.Vector4(base.x0, base.z0, base.post, base.flat) },

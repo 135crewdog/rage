@@ -39,7 +39,7 @@ test('heightmap: 16-bit heights decode from red and green', () => {
   assert.deepEqual([...h], [0, 258, 65535]);
 });
 
-test('heightmap: the finest patch covering a point, blended into the base across its edge band', () => {
+test('heightmap: each patch laid over the base in turn, blended in across its edge band', () => {
   const { meta, heights } = region();
   const s = createSampler(meta, heights);
   near(s.heightAt(0, 0), 2000, 0.01, 'deep inside A');
@@ -47,7 +47,8 @@ test('heightmap: the finest patch covering a point, blended into the base across
   near(s.heightAt(-50, 0), 1500, 0.01, 'halfway through A\'s band');
   near(s.heightAt(0, 50), 1500, 0.01, 'the band runs round every side');
   near(s.heightAt(150, 0), 3000, 0.01, 'deep inside B');
-  near(s.heightAt(80, 0), 1600, 0.01, 'where A and B overlap, the one the point is deeper inside: B at 0.3');
+  near(s.heightAt(80, 0), 1740, 0.01, 'where A and B overlap, A over the base at 0.2, then B over that at 0.3');
+  near(s.heightAt(75, 0), 1687.5, 0.01, 'and no step where their weights cross');
   near(s.heightAt(-1000, 1000), 1000, 0.01, 'outside every patch: the base');
   assert.equal(s.post, 100, 'the finest post spacing');
 });
@@ -120,6 +121,11 @@ test('the real region: known places are at their heights', () => {
     near(got, h, tol, name);
   }
   near(s.heightAt(0, 0), 1246, 30, 'the world origin is Springdale');
+  // where Zion and Bryce overlap the finer Zion shows, and the ground is continuous: no step anywhere along a line through the overlap
+  let worst = 0;
+  for (let x = 20000; x <= 40000; x += 1) { const d = Math.abs(s.heightAt(x + 0.002, -14540) - s.heightAt(x, -14540)); if (d > worst) worst = d; }
+  console.log(`  largest change over 2 mm through the Zion–Bryce overlap: ${(worst * 1000).toFixed(2)} mm`);
+  assert.ok(worst < 0.05, `continuous through the overlap: ${worst} m over 2 mm`);
   near(s.heightAt(-400000, 0), meta.base.flat, 0.01, 'far outside the base: the flat edge height');
 });
 
