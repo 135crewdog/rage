@@ -108,11 +108,15 @@ const fragmentShader = (patches, lakes) => `${heightGlsl(patches)}
     c *= light;
     // water: where the ground is flat at a lake's level inside its box. The
     // survey recorded the lakes full, as flat ground; this paints them.
+    // The height is read from the survey, not taken from the mesh: on the
+    // coarse outer rings the mesh is interpolated between posts that may be
+    // on the land, and a shore would come and go with distance.
     float water = 0.0;
+    float hs = heightWith(wp.xz, w);
     for (int i = 0; i < ${lakes}; i++) {
       vec4 b = lakeBox[i];
       if (wp.x > b.x && wp.x < b.z && wp.z > b.y && wp.z < b.w) {
-        float dh = abs(wp.y - lakeLevel[i]);
+        float dh = abs(hs - lakeLevel[i]);
         water = max(water, (1.0 - smoothstep(1.0, 2.5, dh)) * (1.0 - smoothstep(0.003, 0.010, slope)));
       }
     }
