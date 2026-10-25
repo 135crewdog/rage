@@ -64,6 +64,12 @@ button { font: inherit; color: inherit; -webkit-tap-highlight-color: transparent
 .stick.limited .dot { background: #ff9f0a; }
 .stick.recenter { border-style: dashed; }
 .stick.recenter .dot { background: rgba(255,255,255,0.4); }
+.stick.pulse { animation: stick-pulse 0.9s ease-out; }
+@keyframes stick-pulse {
+  0% { opacity: 1; box-shadow: 0 0 0 0 rgba(124,255,79,0.9); border-color: #7cff4f; }
+  100% { opacity: 0.6; box-shadow: 0 0 0 14px rgba(124,255,79,0); border-color: rgba(255,255,255,0.35); }
+}
+.btn.done { color: #30d158; }
 .pause {
   position: absolute; right: calc(env(safe-area-inset-right, 0px) + 14px); top: calc(env(safe-area-inset-top, 0px) + 10px);
   width: 36px; height: 36px; border: 0; border-radius: 18px; background: rgba(255,255,255,0.18); color: #fff;

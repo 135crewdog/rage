@@ -28,7 +28,7 @@ The owner's design philosophy applies to everything a person sees or touches: ht
 | 1b | Flight control system, tuned. Section 12.2 passing. A headless flight script that flies a manoeuvre and prints a time history, so tuning is visible. | Done |
 | 1c | The app: world, aircraft, camera, HUD, UI, tilt, throttle, menus, PWA, Pages. Ends with the owner flying it on the iPhone. | Flown. Tilt, crash, update prompt and pause-when-hidden confirmed; the wake lock still to confirm |
 | 1d | **Second look.** Zenith and nadir symbols, Credits row, look-around by dragging, afterburner plume. | Done |
-| 2 | **Terrain.** Zion National Park from real elevation data, the crash on the ground that is there, radar altitude on the HUD; plus the recenter confirmation and movable control surfaces. The section "Milestone 2" below. | Proposed |
+| 2 | **Terrain.** Zion National Park from real elevation data, the crash on the ground that is there, radar altitude on the HUD; plus the recenter confirmation and movable control surfaces. The section "Milestone 2" below. | In progress: 1 done |
 
 Later milestones (sound, a bandit to dogfight) get specified when milestone 2 is done.
 
@@ -98,7 +98,7 @@ Minimal, and as unobtrusive as the controls of a real cockpit:
 Screens:
 
 - **Start.** The name, and one button: **Fly**. Tapping it asks for motion access, keeps the screen awake and starts the flight. The motion permission request is the first statement in that tap's handler, before anything else, or iOS refuses it.
-- **Pause.** Resume, **Recenter controls**, Fly again (back to the air start), Settings.
+- **Pause.** Resume, **Recenter controls**, Fly again (back to the air start), Settings. Recentering confirms itself: the button reads "Recentered" with a tick for a second, and the stick indicator glows once as its cross snaps to centre.
 - **Settings.** Theme: Light, Dark, Auto (Auto follows the phone). The app's version. A Credits row that expands in place to the jet's credit and licence. Done.
 - **Rotate your phone.** Shown whenever the phone is in portrait. It also says: if it won't rotate, turn off Portrait Orientation Lock in Control Center.
 - **Motion access denied.** If the permission is refused, say so plainly and how to fix it: close the app completely, open it again, tap Fly and choose Allow. There is no touch-stick fallback (see Parked).

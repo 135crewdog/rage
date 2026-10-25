@@ -17,7 +17,7 @@ import { createStickIndicator } from './ui/stick.js';
 import { createScreens } from './ui/screens.js';
 import { upInScreen, tiltOf, stickFrom, smooth, MAPPING } from './input/tilt.js';
 
-export const APP_VERSION = '0.1.9';   // the same value as VERSION in sw.js
+export const APP_VERSION = '0.1.10';   // the same value as VERSION in sw.js
 const AIR_START = { h: 5000, kcas: 350 };
 const DEBUG = new URLSearchParams(location.search).get('debug') === '1';
 
@@ -110,7 +110,10 @@ function onOrientation(e) {
   const now = performance.now();
   const dt = tilt.seen ? (now - tilt.at) / 1000 : 0;
   Object.assign(tilt, t, { beta: e.beta, gamma: e.gamma, alpha: e.alpha ?? 0, seen: true, at: now });
-  if (wantRecenter && t.confidence > 0.3) { neutral = { pitch: t.pitch, roll: t.roll }; wantRecenter = false; }
+  if (wantRecenter && t.confidence > 0.3) {
+    neutral = { pitch: t.pitch, roll: t.roll }; wantRecenter = false;
+    screens.recentered(); stickIndicator.pulse();   // the tap did something: say so
+  }
   if (!neutral) return;
   const s = stickFrom(t, neutral, MAPPING);
   smoothed.pitch = smooth(smoothed.pitch, s.pitch, dt);
@@ -302,7 +305,7 @@ function frame(now) {
 
   const air = sim.airdata;
   hud.draw(air, power, projectDirection, velocityNed(sim.state), noseNed(sim.state), look.active);
-  stickIndicator.update(stick, sim.limited && stick.pitch > 0, !neutral || tilt.confidence < 0.3);
+  if (mode === 'flying') stickIndicator.update(stick, sim.limited && stick.pitch > 0, !neutral || tilt.confidence < 0.3);   // under a screen it holds, so a recenter's glow waits for flight
 
   frames++;
   if (now - fpsAt > 500) { fps = frames * 1000 / (now - fpsAt); frames = 0; fpsAt = now; }
