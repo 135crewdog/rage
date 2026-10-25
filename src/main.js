@@ -19,7 +19,7 @@ import { createStickIndicator } from './ui/stick.js';
 import { createScreens } from './ui/screens.js';
 import { upInScreen, tiltOf, stickFrom, smooth, MAPPING } from './input/tilt.js';
 
-export const APP_VERSION = '0.1.12';   // the same value as VERSION in sw.js
+export const APP_VERSION = '0.1.13';   // the same value as VERSION in sw.js
 const AIR_START = { h: 5000, kcas: 350 };   // h is above the ground at the start point once the terrain is known
 const DEBUG = new URLSearchParams(location.search).get('debug') === '1';
 
@@ -33,20 +33,28 @@ const world = createWorld(scene);
 const jet = createAircraft();
 scene.add(jet);
 // Fly waits for the model: on a first visit it may still be downloading.
-// The ground: Zion, from terrain/zion.png (see heightmap.js). The image is
-// drawn once to read its posts for the CPU sampler; the GPU reads it directly.
+// The ground: the region of terrain/region.json (see heightmap.js), a base
+// tile and an atlas of fine patches. Each image is drawn once to read its
+// posts for the CPU sampler; the GPU reads the images directly.
 let terrain = null;
 async function loadTerrain() {
-  const meta = await (await fetch('./terrain/zion.json')).json();
-  const image = new Image();
-  image.src = './terrain/zion.png';
-  await image.decode();
-  const canvas = document.createElement('canvas');
-  canvas.width = canvas.height = meta.size;
-  const ctx = canvas.getContext('2d', { willReadFrequently: true });
-  ctx.drawImage(image, 0, 0);
-  const heights = decodeHeights(ctx.getImageData(0, 0, meta.size, meta.size).data, meta.size);
-  return { sampler: createSampler(heights, meta), mesh: createTerrain(scene, image, meta, world) };
+  const region = await (await fetch('./terrain/region.json')).json();
+  const load = async (meta) => {
+    const image = new Image();
+    image.src = './terrain/' + meta.image;
+    await image.decode();
+    const canvas = document.createElement('canvas');
+    canvas.width = meta.w; canvas.height = meta.h;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    ctx.drawImage(image, 0, 0);
+    return { image, heights: decodeHeights(ctx.getImageData(0, 0, meta.w, meta.h).data, meta.w * meta.h) };
+  };
+  const [base, atlas] = await Promise.all([load(region.base), load(region.atlas)]);
+  return {
+    sampler: createSampler(region, { base: base.heights, atlas: atlas.heights }),
+    mesh: createTerrain(scene, region, { base: base.image, atlas: atlas.image }, world),
+    region,
+  };
 }
 // ground height in feet under a simulation state (north, east in feet)
 function groundFt(state) {
@@ -361,6 +369,7 @@ window.rage = {
   get plume() { return jet.plume.mesh; },
   get surfaces() { return jet.surfaces; },
   get ground() { return groundFt(sim.state); },
+  get terrain() { return terrain; },
   set throttle(v) { throttleValue = v; throttle.set(v); },
   get neutral() { return neutral; },
   get draws() { return renderer.info.render.calls; },

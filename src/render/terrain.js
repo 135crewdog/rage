@@ -1,11 +1,13 @@
-// The ground: a heightmap tile drawn as a geometry clipmap, the standard way
-// to put a big landscape on a small device. Nested square grids of the same
-// vertex count but doubling spacing follow the camera, each snapped to its
-// own grid so nothing swims, each with a hole where the finer one sits; the
-// vertex shader lifts every vertex to the height read from the heightmap
-// (the same image heightmap.js samples on the CPU), and the fragment shader
-// colours the ground by height and slope with a fine grain, lit by the sun
-// and faded into the fog. Metres; world x east, z south, y up.
+// The ground: the region's heightmaps drawn as a geometry clipmap, the
+// standard way to put a big landscape on a small device. Nested square grids
+// of the same vertex count but doubling spacing follow the camera, each
+// snapped to its own grid so nothing swims, each with a hole where the finer
+// one sits; the vertex shader lifts every vertex to the height read from the
+// heightmaps (the same lookup heightmap.js does on the CPU), and the fragment
+// shader colours the ground by height and slope with a fine grain, lit by the
+// sun and faded into the fog. The grids are positioned relative to the
+// camera, so single-precision positions stay exact 250 km from the origin.
+// Metres; world x east, z south, y up.
 
 import * as THREE from 'three';
 
@@ -13,57 +15,93 @@ const LEVELS = 7;      // 0.96, 1.9, 3.8, 7.7, 15, 31, 61 km across: the outer e
 const N = 96;          // cells per side of every level
 const SPACING = 10;    // m, the finest level's cell
 
-// Both shaders read the heightmap the same way heightmap.js does: 16-bit
-// posts in red and green, bilinear between them, clamped at the tile's edge.
-const heightGlsl = `
-  uniform sampler2D heightMap;
-  uniform float size, metres, minH, rangeH;
-  uniform vec2 start;
-  float post(vec2 ij) {
-    vec2 c = clamp(ij, vec2(0.0), vec2(size - 1.0));
-    vec4 t = texture2D(heightMap, (c + 0.5) / size);
-    return minH + (t.r * 65280.0 + t.g * 255.0) / 65535.0 * rangeH;
+// Both shaders read the heightmaps the same way heightmap.js does: 16-bit
+// posts in red and green, bilinear between them; the finest patch that
+// covers the point blended into the base across the band inside its edge,
+// and the base eased to one flat height across the band inside its own.
+function heightGlsl(patches) {
+  return `
+  uniform sampler2D baseMap, atlasMap;
+  uniform vec4 baseGrid;          // x0, z0, post, flat
+  uniform vec2 baseSize, atlasSize, baseRange, atlasRange;   // posts; min, max − min
+  uniform float blend, fade;
+  uniform vec4 patchRect[${patches}];   // x0, z0, side, post
+  uniform vec4 patchPix[${patches}];    // px, py, size
+  float decode(vec4 t, vec2 range) { return range.x + (t.r * 65280.0 + t.g * 255.0) / 65535.0 * range.y; }
+  float basePost(vec2 ij) { return decode(texture2D(baseMap, (ij + 0.5) / baseSize), baseRange); }
+  float atlasPost(vec2 ij) { return decode(texture2D(atlasMap, (ij + 0.5) / atlasSize), atlasRange); }
+  float baseHeight(vec2 xz) {
+    vec2 p = clamp((xz - baseGrid.xy) / baseGrid.z, vec2(0.0), baseSize - 1.0);
+    vec2 i = min(floor(p), baseSize - 2.0); vec2 f = p - i;
+    return mix(mix(basePost(i), basePost(i + vec2(1.0, 0.0)), f.x), mix(basePost(i + vec2(0.0, 1.0)), basePost(i + vec2(1.0, 1.0)), f.x), f.y);
   }
-  float height(vec2 xz) {
-    vec2 p = clamp(start + xz / (metres / (size - 1.0)), vec2(0.0), vec2(size - 1.0));
-    vec2 i = min(floor(p), vec2(size - 2.0)); vec2 f = p - i;
-    return mix(mix(post(i), post(i + vec2(1.0, 0.0)), f.x), mix(post(i + vec2(0.0, 1.0)), post(i + vec2(1.0, 1.0)), f.x), f.y);
-  }`;
+  float patchHeight(vec2 xz, vec4 rect, vec4 pix) {
+    vec2 p = clamp((xz - rect.xy) / rect.w, vec2(0.0), vec2(pix.z - 1.0));
+    vec2 i = min(floor(p), vec2(pix.z - 2.0)); vec2 f = p - i;
+    i += pix.xy;
+    return mix(mix(atlasPost(i), atlasPost(i + vec2(1.0, 0.0)), f.x), mix(atlasPost(i + vec2(0.0, 1.0)), atlasPost(i + vec2(1.0, 1.0)), f.x), f.y);
+  }
+  float inside(vec2 xz, vec2 o, vec2 wh, float band) {
+    vec2 d = min(xz - o, o + wh - xz);
+    return clamp(min(d.x, d.y) / band, 0.0, 1.0);
+  }
+  // the finest patch covering xz: its weight, and its rect and pix by reference
+  float choose(vec2 xz, out vec4 rect, out vec4 pix) {
+    float weight = 0.0; rect = vec4(0.0); pix = vec4(0.0);
+    for (int i = 0; i < ${patches}; i++) {
+      float w = inside(xz, patchRect[i].xy, patchRect[i].zz, blend);
+      if (w > weight) { weight = w; rect = patchRect[i]; pix = patchPix[i]; }
+    }
+    return weight;
+  }
+  float heightWith(vec2 xz, float weight, vec4 rect, vec4 pix) {
+    float h = baseHeight(xz);
+    if (weight > 0.0) h += weight * (patchHeight(xz, rect, pix) - h);
+    float outer = inside(xz, baseGrid.xy, (baseSize - 1.0) * baseGrid.z, fade);
+    return baseGrid.w + outer * (h - baseGrid.w);
+  }
+  float height(vec2 xz) { vec4 rect, pix; float w = choose(xz, rect, pix); return heightWith(xz, w, rect, pix); }`;
+}
 
-const vertexShader = `${heightGlsl}
-  uniform vec2 centre; uniform float spacing;
+const vertexShader = (patches) => `${heightGlsl(patches)}
+  uniform vec2 rel;       // the level's centre relative to the camera, so positions stay small
+  uniform float spacing;
   attribute vec2 edge;    // on a level's outer edge, between two of the coarser level's posts: average them, so levels meet without cracks
-  varying vec3 wp;
+  varying vec3 wp;        // world position
+  varying vec3 rp;        // position relative to the camera
   void main() {
-    vec2 xz = centre + position.xz * spacing;
+    vec2 r = rel + position.xz * spacing;
+    vec2 xz = cameraPosition.xz + r;
     float h = (edge.x != 0.0 || edge.y != 0.0) ? 0.5 * (height(xz - edge * spacing) + height(xz + edge * spacing)) : height(xz);
     wp = vec3(xz.x, h, xz.y);
-    gl_Position = projectionMatrix * viewMatrix * vec4(wp, 1.0);
+    rp = vec3(r.x, h - cameraPosition.y, r.y);
+    gl_Position = projectionMatrix * mat4(mat3(viewMatrix)) * vec4(rp, 1.0);
   }`;
 
-const fragmentShader = `${heightGlsl}
+const fragmentShader = (patches) => `${heightGlsl(patches)}
   uniform vec3 sun, fogColor; uniform float fogNear, fogFar;
-  varying vec3 wp;
+  varying vec3 wp, rp;
   float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
   float noise(vec2 p) {
     vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
     return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y);
   }
   void main() {
-    // the slope from the heightmap at a fixed 30 m step, the same at every level
+    // the slope from the heightmaps at a fixed 30 m step, the same at every level; one patch choice serves all four reads
     float d = 30.0;
-    float hx = height(wp.xz + vec2(d, 0.0)) - height(wp.xz - vec2(d, 0.0));
-    float hz = height(wp.xz + vec2(0.0, d)) - height(wp.xz - vec2(0.0, d));
+    vec4 rect, pix; float w = choose(wp.xz, rect, pix);
+    float hx = heightWith(wp.xz + vec2(d, 0.0), w, rect, pix) - heightWith(wp.xz - vec2(d, 0.0), w, rect, pix);
+    float hz = heightWith(wp.xz + vec2(0.0, d), w, rect, pix) - heightWith(wp.xz - vec2(0.0, d), w, rect, pix);
     vec3 n = normalize(vec3(-hx, 2.0 * d, -hz));
     float slope = 1.0 - n.y;
-    // Zion's bands: green along the river, sandstone on the walls, pale plateau on top, grey where it is steep
-    float t = clamp((wp.y - minH) / rangeH, 0.0, 1.0);
-    vec3 valley = vec3(0.34, 0.44, 0.26), sandstone = vec3(0.66, 0.40, 0.29), plateau = vec3(0.74, 0.64, 0.50), rock = vec3(0.48, 0.42, 0.40);
-    vec3 c = mix(valley, sandstone, smoothstep(0.08, 0.40, t));
-    c = mix(c, plateau, smoothstep(0.55, 0.90, t));
+    // the region's bands by height above the sea: desert floor, green valleys, sandstone walls, pale plateaus; grey where it is steep
+    vec3 desert = vec3(0.70, 0.60, 0.46), valley = vec3(0.34, 0.44, 0.26), sandstone = vec3(0.66, 0.40, 0.29), plateau = vec3(0.74, 0.64, 0.50), rock = vec3(0.48, 0.42, 0.40);
+    vec3 c = mix(desert, valley, smoothstep(950.0, 1150.0, wp.y));
+    c = mix(c, sandstone, smoothstep(1150.0, 1850.0, wp.y));
+    c = mix(c, plateau, smoothstep(2150.0, 2950.0, wp.y));
     c = mix(c, rock, smoothstep(0.20, 0.55, slope));
     // a grain at two scales so the ground reads as moving at low level, fading before it aliases
-    float dist = length(wp - cameraPosition);
+    float dist = length(rp);
     float grain = 0.6 * noise(wp.xz / 50.0) + 0.4 * noise(wp.xz / 7.0);
     c *= mix(0.84 + 0.16 * grain, 0.92, smoothstep(1500.0, 6000.0, dist));
     float light = max(dot(n, sun), 0.0) * 0.85 + 0.35;
@@ -104,26 +142,36 @@ function levelGeometry(withHole) {
   return { geo, variants };
 }
 
-// image: the heightmap image; meta as heightmap.js describes; world: the
-// world's fog and sun to match.
-export function createTerrain(scene, image, meta, world) {
+function heightTexture(image) {
   const texture = new THREE.Texture(image);
   texture.magFilter = texture.minFilter = THREE.NearestFilter;
   texture.generateMipmaps = false;
   texture.flipY = false;                 // row 0 is the tile's north edge
   texture.colorSpace = THREE.NoColorSpace;
   texture.needsUpdate = true;
+  return texture;
+}
+
+// region: the parsed region.json; images: { base, atlas } the two heightmap
+// images; world: the world's fog and sun to match.
+export function createTerrain(scene, region, images, world) {
+  const { base, atlas, patches } = region;
   const shared = {
-    heightMap: { value: texture }, size: { value: meta.size }, metres: { value: meta.metres },
-    minH: { value: meta.min }, rangeH: { value: meta.max - meta.min }, start: { value: new THREE.Vector2(meta.start[0], meta.start[1]) },
+    baseMap: { value: heightTexture(images.base) }, atlasMap: { value: heightTexture(images.atlas) },
+    baseGrid: { value: new THREE.Vector4(base.x0, base.z0, base.post, base.flat) },
+    baseSize: { value: new THREE.Vector2(base.w, base.h) }, atlasSize: { value: new THREE.Vector2(atlas.w, atlas.h) },
+    baseRange: { value: new THREE.Vector2(base.min, base.max - base.min) }, atlasRange: { value: new THREE.Vector2(atlas.min, atlas.max - atlas.min) },
+    blend: { value: region.blend }, fade: { value: region.fade },
+    patchRect: { value: patches.map((p) => new THREE.Vector4(p.x0, p.z0, (p.size - 1) * p.post, p.post)) },
+    patchPix: { value: patches.map((p) => new THREE.Vector4(p.px, p.py, p.size, 0)) },
     sun: { value: world.sun.clone().normalize() }, fogColor: { value: world.fog.color }, fogNear: { value: world.fog.near }, fogFar: { value: world.fog.far },
   };
   const levels = [];
   for (let l = 0; l < LEVELS; l++) {
     const { geo, variants } = levelGeometry(l > 0);
     const material = new THREE.ShaderMaterial({
-      uniforms: { ...shared, centre: { value: new THREE.Vector2() }, spacing: { value: SPACING * 2 ** l } },
-      vertexShader, fragmentShader,
+      uniforms: { ...shared, rel: { value: new THREE.Vector2() }, spacing: { value: SPACING * 2 ** l } },
+      vertexShader: vertexShader(patches.length), fragmentShader: fragmentShader(patches.length),
     });
     const mesh = new THREE.Mesh(geo, material);
     mesh.frustumCulled = false;
@@ -138,7 +186,7 @@ export function createTerrain(scene, image, meta, world) {
       for (const level of levels) {
         const step = 2 * level.spacing;
         const cx = Math.floor(cameraPosition.x / step) * step, cz = Math.floor(cameraPosition.z / step) * step;
-        level.mesh.material.uniforms.centre.value.set(cx, cz);
+        level.mesh.material.uniforms.rel.value.set(cx - cameraPosition.x, cz - cameraPosition.z);
         if (finer) {
           const dx = Math.round((finer.x - cx) / level.spacing), dz = Math.round((finer.z - cz) / level.spacing);
           level.mesh.geometry.setIndex(level.variants[dz * 2 + dx]);
