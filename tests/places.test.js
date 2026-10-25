@@ -13,10 +13,10 @@ const projection = createProjection(region);
 
 test('places: five, each starting well inside its own fine patch, with a heading', () => {
   assert.equal(PLACES.length, 5);
-  assert.equal(DEFAULT_PLACE, 'Zion');
+  assert.equal(DEFAULT_PLACE, 'Zion National Park');
   for (const place of PLACES) {
-    const patch = region.patches.find((p) => p.name === place.name);
-    assert.ok(patch, `a patch named ${place.name}`);
+    const patch = region.patches.find((p) => p.name === place.patch);
+    assert.ok(patch, `a patch named ${place.patch} for ${place.name}`);
     const { x, z } = projection.toWorld(place.start.lat, place.start.lon);
     const side = (patch.size - 1) * patch.post;
     const depth = Math.min(x - patch.x0, patch.x0 + side - x, z - patch.z0, patch.z0 + side - z);
@@ -24,17 +24,17 @@ test('places: five, each starting well inside its own fine patch, with a heading
     assert.ok(depth > region.blend + 5000, `${place.name} starts more than 5 km inside the fine ground, past the blend band`);
     assert.ok(place.start.heading >= 0 && place.start.heading < 360);
   }
-  assert.equal(placeNamed('Nowhere').name, 'Zion', 'an unknown name falls back to Zion');
+  assert.equal(placeNamed('Nowhere').name, 'Zion National Park', 'an unknown name falls back to Zion');
 });
 
 test('places: the air start is 5,000 ft above the ground there, pointed the right way', () => {
   const sampler = { heightAt: () => 1000 };
-  const s = airStartFor(placeNamed('Las Vegas'), projection, sampler);
+  const s = airStartFor(placeNamed('Nellis AFB'), projection, sampler);
   near(s.h, 1000 / METRES_PER_FOOT + START_AGL_FT, 0.01, 'height');
   near(s.psi, 230 * Math.PI / 180, 1e-12, 'heading');
   const { x, z } = projection.toWorld(36.236, -115.034);
   near(s.east * METRES_PER_FOOT, x, 1e-6, 'east'); near(-s.north * METRES_PER_FOOT, z, 1e-6, 'north');
-  const zion = airStartFor(placeNamed('Zion'), projection, sampler);
+  const zion = airStartFor(placeNamed('Zion National Park'), projection, sampler);
   near(zion.north, 0, 1e-9); near(zion.east, 0, 1e-9); near(zion.psi, 0, 1e-12);
 });
 

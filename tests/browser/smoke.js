@@ -75,8 +75,8 @@ async function main() {
 
     // choose a place, then tap Fly: no permission prompt in Chromium, so flight starts at once
     await page.waitForFunction(() => !document.getElementById('fly').disabled);
-    await page.click('#place button[data-place="Las Vegas"]');
-    assert.equal(await page.evaluate(() => localStorage.getItem('rage.place')), 'Las Vegas', 'the place is remembered');
+    await page.click('#place button[data-place="Nellis AFB"]');
+    assert.equal(await page.evaluate(() => localStorage.getItem('rage.place')), 'Nellis AFB', 'the place is remembered');
     await page.click('#fly');
     await page.waitForFunction(() => window.rage.mode === 'flying');
     // the terrain is under the jet: the air start is 5,000 ft above the ground at the chosen place, pointed at the sight
