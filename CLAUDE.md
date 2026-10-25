@@ -29,7 +29,7 @@ The owner's design philosophy applies to everything a person sees or touches: ht
 | 1c | The app: world, aircraft, camera, HUD, UI, tilt, throttle, menus, PWA, Pages. Ends with the owner flying it on the iPhone. | Flown. Tilt, crash, update prompt and pause-when-hidden confirmed; the wake lock still to confirm |
 | 1d | **Second look.** Zenith and nadir symbols, Credits row, look-around by dragging, afterburner plume. | Done |
 | 2 | **Terrain.** Zion National Park from real elevation data, the crash on the ground that is there, radar altitude on the HUD; plus the recenter confirmation and movable control surfaces. The section "Milestone 2" below. | Flown. The tile's edge looked wrong; milestone 3 fixes it |
-| 3 | **Places.** A coarse base tile from Las Vegas to Lake Powell with five fine patches at the places worth flying, a place to choose on the start screen, and the F-16's steerpoint and bullseye on the HUD. The section "Milestone 3" below. | Agreed; waiting for the elevation downloads |
+| 3 | **Places.** A coarse base tile from Las Vegas to Lake Powell with five fine patches at the places worth flying, a place to choose on the start screen, and the F-16's steerpoint and bullseye on the HUD. The section "Milestone 3" below. | In progress: 1 built |
 
 Later milestones (sound, a bandit to dogfight) get specified when milestone 3 is done.
 
@@ -50,7 +50,7 @@ src/sim/                  the simulation: pure JS, no DOM, no three.js, no brows
 src/sim/data/             the F-16 tables as JS modules, re-keyed from docs/f16-data.md
 src/input/                tilt and look-around; browser-facing, maths kept pure and tested
 src/render/               all three.js code: world, terrain, aircraft, plume, camera, frame conversions
-terrain/                  zion.png and zion.json (the heightmap), CREDITS.md, make-heightmap.py (the GeoTIFF conversion)
+terrain/                  base.png, places.png and region.json (the heightmaps), CREDITS.md, make-heightmap.py (the GeoTIFF conversion)
 src/hud/                  the HUD
 src/ui/                   throttle, stick indicator, pause button, screens, settings
 vendor/three/             three.js r186: build/three.module.js, build/three.core.js, examples/jsm/ (GLTFLoader and its helpers), LICENSE, VERSION
@@ -68,7 +68,7 @@ tests/browser/smoke.js    loads the app in headless Chromium and flies a few sec
 ## The aircraft and the world
 
 - **The jet** is a low-poly F-16C model, “F 16 C” by Usman Zia, CC BY 4.0, converted to glTF in `models/f16c.glb` and credited in `models/CREDITS.md` and under Credits in Settings. It is loaded with three.js's GLTFLoader addon, copied into `vendor/three/examples/jsm/` with its two helpers. Its stabilators, flaperons and rudder are separate parts, cut along the author's hinge lines by `models/cut-surfaces.py`, and move every frame to the simulation's actuator positions; the stabilators also move differentially with roll, a quarter of the flaperon deflection, as the real tails do. Behind the nozzle, an afterburner plume (`src/render/plume.js`): two additive cones with shock diamonds, growing with the burner fraction the engine reports, hidden at dry power. Control surfaces don't need to move in milestone 1.
-- **The world** is Zion National Park: a 60 km square of real elevation data (`terrain/`, see its CREDITS.md) drawn as a geometry clipmap by `src/render/terrain.js`, coloured by height and slope with a fine grain; the same heightmap read on the CPU by `src/render/heightmap.js` for the crash and the radar altitude. A sky that fades to a horizon colour, fog that hides the far edge, sun from above, no shadows.
+- **The world** is the country from Las Vegas to Lake Powell and from the Grand Canyon to Bryce Canyon: a coarse base tile of real elevation data with five fine patches at Zion, the Grand Canyon, Bryce, Lake Powell and Las Vegas (`terrain/`, see its CREDITS.md), drawn as a geometry clipmap by `src/render/terrain.js`, coloured by height and slope with a fine grain; the same heightmaps read on the CPU by `src/render/heightmap.js` for the crash and the radar altitude. A sky that fades to a horizon colour, fog that hides the far edge, sun from above, no shadows.
 - **Air start:** 5,000 ft above the ground over Springdale, at the mouth of Zion Canyon, 350 KCAS, wings level, heading north up the canyon, trimmed for 1 g. The throttle slider starts at the trim setting. The FCS starts trimmed too (`docs/flight-model.md` 8.2).
 - **Crash:** below the ground that is there the flight ends. The screen says "Crashed" with one button, "Fly again", which restarts from the air start.
 
