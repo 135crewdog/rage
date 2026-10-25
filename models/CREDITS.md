@@ -8,6 +8,7 @@ real jet's 15.06 m length, rotated nose-forward along −z with the wing plane a
 y 0, the ambient-occlusion map baked into the colour texture at 1024 px, the
 normal and metallic maps dropped, and the canopy given the gold tint of the
 author's own glTF export, a little less transparent. The stabilators, flaperons
-and rudder are cut out of the mesh along the author's hinge lines by
+and rudder are cut out of the mesh along the author's painted hinge lines by
 `cut-surfaces.py` so they can move; the uncut model is in the repository's
-history before that change.
+history before that change, and the first cut, with the flaperons square
+across the wing and the rudder running to the fin's tip, before the second.

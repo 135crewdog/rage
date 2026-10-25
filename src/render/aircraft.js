@@ -3,7 +3,7 @@
 // 15.06 m with its pitot tip at z −7.45 and its wing plane at y 0, so the
 // camera and the HUD see the same geometry the code-built jet had. Its
 // stabilators, flaperons and rudder are separate parts, cut along the
-// author's hinge lines by models/cut-surfaces.py, and move with the FCS.
+// author's painted hinge lines by models/cut-surfaces.py, and move with the FCS.
 // Mesh-local axes: nose along −z, right wing +x, canopy +y. Metres.
 
 import * as THREE from 'three';
@@ -13,8 +13,12 @@ import { createPlume } from './plume.js';
 const MODEL = './models/f16c.glb';
 
 const D2R = Math.PI / 180;
-// The rudder's hinge leans aft 21° from the vertical (models/cut-surfaces.py).
-const RUDDER_AXIS = new THREE.Vector3(0, 0.9345, 0.356).normalize();
+// The hinge axes, as models/cut-surfaces.py cut them: the rudder's leans aft
+// 33° from the vertical; each flaperon's runs out along the wing, raked aft
+// 8.4°, from its inboard end where the part's origin is.
+const RUDDER_AXIS = new THREE.Vector3(0, 0.8353, 0.5498).normalize();
+const FLAP_AXIS_R = new THREE.Vector3(0.9892, 0, 0.1463).normalize();
+const FLAP_AXIS_L = new THREE.Vector3(-0.9892, 0, 0.1463).normalize();
 // The F-16's horizontal tails also move differentially for roll, about a
 // quarter of the flaperon deflection (±5.25° against ±21.5°).
 const DIFFERENTIAL_TAIL = 0.25;
@@ -43,8 +47,8 @@ export function createAircraft() {
       if (!parts.rudder) return;
       parts.stabR.rotation.x = (el + DIFFERENTIAL_TAIL * ail) * D2R;
       parts.stabL.rotation.x = (el - DIFFERENTIAL_TAIL * ail) * D2R;
-      parts.flapR.rotation.x = ail * D2R;
-      parts.flapL.rotation.x = -ail * D2R;
+      parts.flapR.quaternion.setFromAxisAngle(FLAP_AXIS_R, ail * D2R);     // right down for a left roll
+      parts.flapL.quaternion.setFromAxisAngle(FLAP_AXIS_L, ail * D2R);     // the mirrored axis with the same angle: left up
       parts.rudder.quaternion.setFromAxisAngle(RUDDER_AXIS, -rdr * D2R);
     },
   };
