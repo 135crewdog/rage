@@ -126,6 +126,7 @@ p { margin: 0; }
   flex: 1; padding: 8px; border: 0; border-radius: 7px; background: none; font-size: 13px; font-weight: 600; color: var(--text);
 }
 .segments button[aria-checked="true"] { background: var(--elev); box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+.segments.places button { padding: 6px 2px; font-size: 12px; line-height: 1.2; }   /* five names in the card's width; the long ones wrap */
 .update { font-size: 13px; color: var(--text2); text-align: center; }
 .update[hidden] { display: none; }
 

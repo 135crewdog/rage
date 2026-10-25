@@ -73,12 +73,17 @@ async function main() {
     assert.equal(await page.evaluate(() => document.getElementById('screen-start').hidden), false);
     await shot('start');
 
-    // tap Fly: no permission prompt in Chromium, so flight starts at once
+    // choose a place, then tap Fly: no permission prompt in Chromium, so flight starts at once
+    await page.waitForFunction(() => !document.getElementById('fly').disabled);
+    await page.click('#place button[data-place="Las Vegas"]');
+    assert.equal(await page.evaluate(() => localStorage.getItem('rage.place')), 'Las Vegas', 'the place is remembered');
     await page.click('#fly');
     await page.waitForFunction(() => window.rage.mode === 'flying');
-    // the terrain is under the jet: the air start is 5,000 ft above the ground there
-    const startAgl = await page.evaluate(() => window.rage.sim.airdata.altitude - window.rage.ground);
-    assert.ok(Math.abs(startAgl - 5000) < 60, `air start 5,000 ft above the ground: ${startAgl}`);
+    // the terrain is under the jet: the air start is 5,000 ft above the ground at the chosen place, pointed at the sight
+    const start = await page.evaluate(() => ({ agl: window.rage.sim.airdata.altitude - window.rage.ground, heading: window.rage.sim.airdata.heading, alt: window.rage.sim.airdata.altitude }));
+    assert.ok(Math.abs(start.agl - 5000) < 60, `air start 5,000 ft above the ground: ${start.agl}`);
+    assert.ok(Math.abs(start.heading - 230) < 0.5, `heading 230 over Nellis: ${start.heading}`);
+    assert.ok(start.alt > 6500 && start.alt < 7200, `Nellis is about 1,870 ft up: ${start.alt}`);
     // the whole region loaded: five patches, and Las Vegas 194 km west is at its height
     const region = await page.evaluate(() => ({ patches: window.rage.terrain.region.patches.length, vegas: window.rage.terrain.sampler.heightAt(-194066, 120023) }));
     assert.equal(region.patches, 5, 'five patches');

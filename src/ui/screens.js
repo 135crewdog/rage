@@ -2,6 +2,7 @@
 // the theme. One screen shows at a time; none while flying.
 
 const THEME_KEY = 'rage.theme';
+const PLACE_KEY = 'rage.place';
 const media = typeof matchMedia === 'function' ? matchMedia('(prefers-color-scheme: dark)') : null;
 
 export function loadTheme() {
@@ -15,9 +16,22 @@ export function applyTheme(choice) {
   for (const b of document.querySelectorAll('#theme button')) b.setAttribute('aria-checked', String(b.dataset.theme === choice));
 }
 
+// The place to fly from, remembered; only a name the start screen offers.
+export function loadPlace() {
+  const names = [...document.querySelectorAll('#place button')].map((b) => b.dataset.place);
+  let choice = null;
+  try { choice = localStorage.getItem(PLACE_KEY); } catch { /* storage may be blocked */ }
+  return names.includes(choice) ? choice : names[0];
+}
+
+export function applyPlace(name) {
+  try { localStorage.setItem(PLACE_KEY, name); } catch { /* storage may be blocked; the choice still applies */ }
+  for (const b of document.querySelectorAll('#place button')) b.setAttribute('aria-checked', String(b.dataset.place === name));
+}
+
 // locked: a function returning the name of a screen that must show instead
 // of any other (the rotate screen while the phone is portrait), or null.
-export function createScreens({ version, onFly, onResume, onRecenter, onFlyAgain, onUpdate, locked = () => null }) {
+export function createScreens({ version, onFly, onResume, onRecenter, onFlyAgain, onUpdate, onPlace, locked = () => null }) {
   const screens = {};
   for (const el of document.querySelectorAll('.screen')) screens[el.id.replace('screen-', '')] = el;
   const container = document.getElementById('screens');
@@ -42,7 +56,9 @@ export function createScreens({ version, onFly, onResume, onRecenter, onFlyAgain
   document.getElementById('settings-open').addEventListener('click', () => { previous = current; show('settings'); });
   document.getElementById('settings-done').addEventListener('click', () => show(previous || 'pause'));
   for (const b of document.querySelectorAll('#theme button')) b.addEventListener('click', () => applyTheme(b.dataset.theme));
+  for (const b of document.querySelectorAll('#place button')) b.addEventListener('click', () => { applyPlace(b.dataset.place); onPlace(b.dataset.place); });
   for (const b of document.querySelectorAll('.update-btn')) b.addEventListener('click', onUpdate);
+  applyPlace(loadPlace());
 
   const choice = loadTheme();
   applyTheme(choice);
