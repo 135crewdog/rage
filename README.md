@@ -74,4 +74,6 @@ One version string lives in two places: `APP_VERSION` in `src/main.js` (shown in
 
 The simulation lives in `src/sim/` and is plain JavaScript with no DOM, no three.js and no browser APIs. Its units are the book's imperial ones: feet, slugs, pounds, degrees in the tables and radians in the state. `src/sim/data/` holds the F-16 tables, re-keyed from `docs/f16-data.md`. `src/render/` is all the three.js code, with `frames.js` the one place that converts feet and NED into metres and the three.js world. `src/hud/` draws the HUD on a 2-D canvas, `src/ui/` holds the throttle, stick indicator and screens, `src/input/` the tilt maths, and `src/main.js` wires them together. three.js r186 is copied into `vendor/three/`, with the GLTFLoader addon and its two helpers under `examples/jsm/`; the app loads it through an import map and never from a CDN.
 
+The ground is `terrain/zion.png`, a heightmap tile made from public-domain SRTM elevation data by `terrain/make-heightmap.py` (see `terrain/CREDITS.md`); `src/render/heightmap.js` reads it on the CPU for the crash and the radar altitude and `src/render/terrain.js` draws it as a geometry clipmap.
+
 The jet is `models/f16c.glb`, "F 16 C" by Usman Zia under CC BY 4.0. The licence needs the credit kept: it is in `models/CREDITS.md` and on the Settings screen.
