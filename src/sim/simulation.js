@@ -41,7 +41,7 @@ export class Simulation {
     const x = this.state, a = this.aux;
     return {
       alphaDeg: a.alpha * R2D, p: x[IX.P], q: x[IX.Q], r: x[IX.R],
-      nz: a.nz, ny: a.ny, qbar: a.qbar, mach: a.mach, el: x[IX.EL], ail: x[IX.AIL], rdr: x[IX.RDR],
+      nz: a.nz, ny: a.ny, qbar: a.qbar, mach: a.mach, el: x[IX.EL],
     };
   }
 
@@ -80,6 +80,13 @@ export class Simulation {
   // True while the AoA limiter is taking g away from what the stick asks.
   get limited() {
     return this.fcs.limiting > 0.05 || this.fcs.backstop;
+  }
+
+  // The control surfaces' positions in degrees, for the renderer: el, ail, rdr
+  // with the signs of docs/flight-model.md 2.3.
+  get surfaces() {
+    const x = this.state;
+    return { el: x[IX.EL], ail: x[IX.AIL], rdr: x[IX.RDR] };
   }
 
   // The engine's power state for the HUD, from the engine and not the slider:

@@ -299,7 +299,8 @@ function frame(now) {
   look.update(elapsed);
   const power = sim.powerState;
   jet.plume.update(power.label === 'AB' ? power.percent / 100 : 0, elapsed);
-  jet.surfaces.set(aux.el, aux.ail, aux.rdr);
+  const sfc = sim.surfaces;
+  jet.surfaces.set(sfc.el, sfc.ail, sfc.rdr);
   chase.update(elapsed, lerped.position, lerped.quaternion, { nz: aux.nz, alphaDeg: aux.alpha * 180 / Math.PI, qbar: aux.qbar }, look);
   world.update(camera.position);
   renderer.render(scene, camera);
