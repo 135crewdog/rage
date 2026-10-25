@@ -48,8 +48,18 @@ export function createScreens({ version, onFly, onResume, onRecenter, onFlyAgain
   applyTheme(choice);
   if (media) media.addEventListener('change', () => applyTheme(loadTheme()));
 
+  // Recenter happened: the button says so for a second, then offers again.
+  const recenterButton = document.getElementById('recenter');
+  let recenterTimer = null;
+  function recentered() {
+    recenterButton.textContent = 'Recentered ✓';
+    recenterButton.classList.add('done');
+    clearTimeout(recenterTimer);
+    recenterTimer = setTimeout(() => { recenterButton.textContent = 'Recenter controls'; recenterButton.classList.remove('done'); }, 1200);
+  }
+
   return {
-    show, hide,
+    show, hide, recentered,
     get current() { return current; },
     // offer a waiting update on the start and pause screens only, never mid-flight
     offerUpdate(available) { for (const p of document.querySelectorAll('.update')) p.hidden = !available; },

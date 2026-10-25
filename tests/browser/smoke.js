@@ -136,6 +136,11 @@ async function main() {
     await page.click('#pause');
     await page.waitForFunction(() => window.rage.mode === 'paused');
     await shot('pause');
+    // recenter confirms itself once the next tilt reading is in
+    await page.click('#recenter');
+    await page.evaluate(() => window.dispatchEvent(new DeviceOrientationEvent('deviceorientation', { alpha: 0, beta: 30, gamma: 0 })));
+    assert.ok((await page.evaluate(() => document.getElementById('recenter').textContent)).startsWith('Recentered'), 'recenter button confirms');
+    await page.waitForFunction(() => document.getElementById('recenter').textContent === 'Recenter controls', null, { timeout: 5000 });
     await page.click('#settings-open');
     await page.click('#theme button[data-theme="dark"]');
     assert.equal(await page.evaluate(() => document.documentElement.dataset.theme), 'dark');
