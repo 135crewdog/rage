@@ -82,6 +82,13 @@ export class Simulation {
     return this.fcs.limiting > 0.05 || this.fcs.backstop;
   }
 
+  // The control surfaces' positions in degrees, for the renderer: el, ail, rdr
+  // with the signs of docs/flight-model.md 2.3.
+  get surfaces() {
+    const x = this.state;
+    return { el: x[IX.EL], ail: x[IX.AIL], rdr: x[IX.RDR] };
+  }
+
   // The engine's power state for the HUD, from the engine and not the slider:
   // IDLE, dry power as a percentage of MIL, MIL, or AB with its percentage.
   get powerState() {
