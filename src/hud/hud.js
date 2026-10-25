@@ -47,6 +47,24 @@ export function altitudeDisplay(altitudeFt, groundFt) {
   return { radar: false, value: Math.round(altitudeFt) };
 }
 
+// Which way the tadpole's tail points: toward the steerpoint's place on the
+// screen when it is in front of the camera, else straight left or right by
+// the relative bearing (degrees, −180..180). A unit screen vector.
+export function cueDirection(screen, from, relativeBearingDeg) {
+  if (screen && screen.visible) {
+    const dx = screen.x - from.x, dy = screen.y - from.y, m = Math.hypot(dx, dy);
+    if (m > 1) return { x: dx / m, y: dy / m };
+  }
+  return { x: relativeBearingDeg < 0 ? -1 : 1, y: 0 };
+}
+
+// A bearing relative to a heading, −180..180, negative to the left.
+export function relativeBearing(headingDeg, bearingDeg) {
+  let r = (bearingDeg - headingDeg) % 360;
+  if (r > 180) r -= 360; else if (r < -180) r += 360;
+  return r;
+}
+
 export function apexFor(pitchDeg) {
   if (pitchDeg >= 90 - LADDER_RANGE) return 'zenith';
   if (pitchDeg <= -90 + LADDER_RANGE) return 'nadir';
@@ -109,8 +127,10 @@ export function createHud(canvas) {
   // air: the airdata object, plus ground (ft) when the terrain is known; power: { label, percent }; project: a NED
   // direction → { x, y, visible } on the screen; velocity and nose: unit NED
   // directions of the flight path and the body x axis; looking: true while
-  // the view is swung away from the chase position.
-  function draw(air, power, project, velocity, nose, looking = false) {
+  // the view is swung away from the chase position; nav, when the terrain is
+  // known: { steer: { dir (unit NED to the steerpoint), bearing, range (nm),
+  // name }, bullseye: { bearing, range } (the jet's own, from the bullseye) }.
+  function draw(air, power, project, velocity, nose, looking = false, nav = null) {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, w, h);
     const cx = w / 2, cy = h / 2;
@@ -188,8 +208,10 @@ export function createHud(canvas) {
     // around it is simply where it is, in view or not.
     const f = project(velocity);
     const inFrame = f.visible && f.x >= left + 30 && f.x <= right - 30 && f.y >= top + 60 && f.y <= bottom - 70;
+    let fpm = null;
     if (f.visible && (inFrame || !looking)) {
       const fx = Math.max(left + 30, Math.min(right - 30, f.x)), fy = Math.max(top + 60, Math.min(bottom - 70, f.y));
+      fpm = { x: fx, y: fy };
       dashed(!inFrame);
       stroke(() => {
         ctx.arc(fx, fy, 7, 0, Math.PI * 2);
@@ -200,6 +222,25 @@ export function createHud(canvas) {
       dashed(false);
     }
 
+    // steerpoint: the F-16's diamond on the next place when it is in the
+    // view; otherwise the tadpole, a small circle above the flight path
+    // marker with a tail pointing the way to turn
+    if (nav) {
+      const s = project(nav.steer.dir);
+      const steerInFrame = s.visible && s.x >= left + 30 && s.x <= right - 30 && s.y >= top + 60 && s.y <= bottom - 70;
+      if (steerInFrame) {
+        stroke(() => { ctx.moveTo(s.x, s.y - 9); ctx.lineTo(s.x + 9, s.y); ctx.lineTo(s.x, s.y + 9); ctx.lineTo(s.x - 9, s.y); ctx.closePath(); });
+      } else {
+        const at = fpm ?? { x: cx, y: cy };
+        const u = cueDirection(s, at, relativeBearing(hdg, nav.steer.bearing));
+        const tx = at.x, ty = at.y - 34;
+        stroke(() => {
+          ctx.moveTo(tx + 5, ty); ctx.arc(tx, ty, 5, 0, Math.PI * 2);
+          ctx.moveTo(tx + u.x * 5, ty + u.y * 5); ctx.lineTo(tx + u.x * 18, ty + u.y * 18);
+        });
+      }
+    }
+
     // airspeed (KCAS) on the left, altitude on the right, with carets
     stroke(() => { ctx.moveTo(left + 46, cy); ctx.lineTo(left + 54, cy - 5); ctx.lineTo(left + 54, cy + 5); ctx.closePath(); });
     text(String(Math.round(air.kcas)), left + 42, cy, 'right', 20);
@@ -207,11 +248,17 @@ export function createHud(canvas) {
     const alt = altitudeDisplay(air.altitude, air.ground);
     text((alt.radar ? 'R ' : '') + alt.value, right - 42, cy, 'left', 20);
 
-    // g, AoA, Mach and the engine's power state, lower left
-    text(`${air.nz.toFixed(1)} G`, left, bottom - 54, 'left', 14);
-    text(`α ${air.alpha.toFixed(1)}`, left, bottom - 36, 'left', 14);
-    text(`M ${air.mach.toFixed(2)}`, left, bottom - 18, 'left', 14);
-    text(power.label === 'AB' ? `AB ${power.percent}%` : power.label === 'DRY' ? `${power.percent}%` : power.label, left, bottom, 'left', 14);
+    // g, AoA, Mach, the engine's power state and the jet's own bullseye
+    // position, lower left; the steerpoint's range and name, lower right
+    const rows = nav ? [bottom - 72, bottom - 54, bottom - 36, bottom - 18] : [bottom - 54, bottom - 36, bottom - 18, bottom];
+    text(`${air.nz.toFixed(1)} G`, left, rows[0], 'left', 14);
+    text(`α ${air.alpha.toFixed(1)}`, left, rows[1], 'left', 14);
+    text(`M ${air.mach.toFixed(2)}`, left, rows[2], 'left', 14);
+    text(power.label === 'AB' ? `AB ${power.percent}%` : power.label === 'DRY' ? `${power.percent}%` : power.label, left, rows[3], 'left', 14);
+    if (nav) {
+      text(`BE ${String(Math.round(nav.bullseye.bearing) % 360).padStart(3, '0')}/${Math.round(nav.bullseye.range)}`, left, bottom, 'left', 14);
+      text(`${nav.steer.range.toFixed(1)} > ${nav.steer.name.toUpperCase()}`, right, bottom, 'right', 14);
+    }
   }
 
   return { resize, draw };

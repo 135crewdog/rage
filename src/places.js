@@ -1,20 +1,72 @@
-// The places to fly: each has an air start 5,000 ft above the ground,
-// pointed at the sight. Names match the patches in terrain/region.json.
-// Headings are degrees true; positions are latitude and longitude, turned
-// into the simulation's north and east feet with the region's projection.
+// The places to fly, and the F-16's way of finding them. Each place has an
+// air start 5,000 ft above the ground, pointed at the sight, and the sight
+// itself, which is its steerpoint. Names match the patches in
+// terrain/region.json. Headings are degrees true; positions are latitude and
+// longitude, turned into the simulation's north and east feet with the
+// region's projection.
+//
+// Navigation the way the jet does it, with no menu: the places form a fixed
+// loop (LOOP), and the HUD shows one steerpoint, the next place on the loop
+// after the one you chose, stepping on when you pass within STEP_NM of it,
+// as the jet's auto-sequencing does. The bullseye is a fixed point every
+// position can be called from, as bearing and range: the HUD shows the jet's
+// own, and the start screen each place's.
 
 import { METRES_PER_FOOT } from './render/frames.js';
 
-const D2R = Math.PI / 180;
+const D2R = Math.PI / 180, R2D = 180 / Math.PI;
+const METRES_PER_NM = 1852;
 export const START_AGL_FT = 5000;
+export const STEP_NM = 2;            // passing within this of a steerpoint steps to the next
+export const BULLSEYE = { lat: 37.19, lon: -112.99, name: 'Springdale' };   // one point; move it here
 
 export const PLACES = [
-  { name: 'Zion', start: { lat: 37.19, lon: -112.99, heading: 0 }, where: 'over Springdale, heading north up the canyon' },
-  { name: 'Grand Canyon', start: { lat: 36.054, lon: -112.138, heading: 0 }, where: 'over Grand Canyon Village, heading north across the gorge' },
-  { name: 'Bryce', start: { lat: 37.60, lon: -112.26, heading: 90 }, where: 'over the plateau west of Bryce Point, heading east over the amphitheatre' },
-  { name: 'Lake Powell', start: { lat: 36.80, lon: -111.42, heading: 330 }, where: 'over the Echo Cliffs south-east of Page, heading north-west over Horseshoe Bend to the dam and the lake' },
-  { name: 'Las Vegas', start: { lat: 36.236, lon: -115.034, heading: 230 }, where: 'over Nellis, heading south-west down the Strip' },
+  { name: 'Zion', start: { lat: 37.19, lon: -112.99, heading: 0 }, sight: { lat: 37.27, lon: -112.95 }, where: 'over Springdale, heading north up the canyon' },
+  { name: 'Grand Canyon', start: { lat: 36.054, lon: -112.138, heading: 0 }, sight: { lat: 36.10, lon: -112.09 }, where: 'over Grand Canyon Village, heading north across the gorge' },
+  { name: 'Bryce', start: { lat: 37.60, lon: -112.26, heading: 90 }, sight: { lat: 37.60, lon: -112.16 }, where: 'over the plateau west of Bryce Point, heading east over the amphitheatre' },
+  { name: 'Lake Powell', start: { lat: 36.80, lon: -111.42, heading: 330 }, sight: { lat: 36.94, lon: -111.48 }, where: 'over the Echo Cliffs south-east of Page, heading north-west over Horseshoe Bend to the dam and the lake' },
+  { name: 'Las Vegas', start: { lat: 36.236, lon: -115.034, heading: 230 }, sight: { lat: 36.11, lon: -115.17 }, where: 'over Nellis, heading south-west down the Strip' },
 ];
+// The loop the steerpoints follow: Zion, Bryce, Lake Powell, the Grand Canyon, Las Vegas, and round again.
+export const LOOP = ['Zion', 'Bryce', 'Lake Powell', 'Grand Canyon', 'Las Vegas'];
+
+export function nextPlace(name) {
+  return placeNamed(LOOP[(LOOP.indexOf(name) + 1) % LOOP.length]);
+}
+
+// Bearing (degrees true, 0..360) and range (nm) from one world point to
+// another; world x east, z south, metres.
+export function bearingRange(from, to) {
+  const east = to.x - from.x, north = -(to.z - from.z);
+  let bearing = Math.atan2(east, north) * R2D;
+  if (bearing < 0) bearing += 360;
+  return { bearing, range: Math.hypot(east, north) / METRES_PER_NM };
+}
+
+// "058 for 47": how the F-16 says a bearing and range.
+export function callOf({ bearing, range }) {
+  return `${String(Math.round(bearing) % 360).padStart(3, '0')} for ${Math.round(range)}`;
+}
+
+// A place's sight as the bullseye calls it, for the start screen.
+export function bullseyeOf(place, projection) {
+  return bearingRange(projection.toWorld(BULLSEYE.lat, BULLSEYE.lon), projection.toWorld(place.sight.lat, place.sight.lon));
+}
+
+// The route from a chosen place: `current` is the next place on the loop,
+// `update(xz)` steps it on when the jet passes within STEP_NM of its sight.
+export function createRoute(startName, projection) {
+  let current = nextPlace(startName);
+  const sightOf = (place) => projection.toWorld(place.sight.lat, place.sight.lon);
+  return {
+    get current() { return current; },
+    get sight() { return sightOf(current); },
+    update(xz) {
+      if (bearingRange(xz, sightOf(current)).range < STEP_NM) current = nextPlace(current.name);
+      return current;
+    },
+  };
+}
 
 export const DEFAULT_PLACE = PLACES[0].name;
 

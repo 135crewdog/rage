@@ -76,6 +76,8 @@ export function createScreens({ version, onFly, onResume, onRecenter, onFlyAgain
 
   return {
     show, hide, recentered,
+    // each place's bullseye call under its name, once the region is known
+    labelPlaces(calls) { for (const b of document.querySelectorAll('#place button')) b.querySelector('small').textContent = calls[b.dataset.place] ?? ''; },
     get current() { return current; },
     // offer a waiting update on the start and pause screens only, never mid-flight
     offerUpdate(available) { for (const p of document.querySelectorAll('.update')) p.hidden = !available; },

@@ -127,6 +127,7 @@ p { margin: 0; }
 }
 .segments button[aria-checked="true"] { background: var(--elev); box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
 .segments.places button { padding: 6px 2px; font-size: 12px; line-height: 1.2; }   /* five names in the card's width; the long ones wrap */
+.segments.places small { display: block; font-size: 10px; font-weight: 500; color: var(--text2); font-variant-numeric: tabular-nums; }   /* the place's bullseye call */
 .update { font-size: 13px; color: var(--text2); text-align: center; }
 .update[hidden] { display: none; }
 

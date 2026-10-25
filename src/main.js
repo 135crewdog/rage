@@ -10,7 +10,7 @@ import * as Quat from './sim/quaternion.js';
 import { createWorld } from './render/world.js';
 import { createTerrain } from './render/terrain.js';
 import { decodeHeights, createSampler, createProjection } from './render/heightmap.js';
-import { placeNamed, airStartFor } from './places.js';
+import { placeNamed, airStartFor, createRoute, bearingRange, bullseyeOf, callOf, BULLSEYE, PLACES } from './places.js';
 import { createAircraft } from './render/aircraft.js';
 import { createChaseCamera } from './render/camera.js';
 import { createLook, attachLook } from './input/look.js';
@@ -20,7 +20,7 @@ import { createStickIndicator } from './ui/stick.js';
 import { createScreens, loadPlace } from './ui/screens.js';
 import { upInScreen, tiltOf, stickFrom, smooth, MAPPING } from './input/tilt.js';
 
-export const APP_VERSION = '0.1.14';   // the same value as VERSION in sw.js
+export const APP_VERSION = '0.1.15';   // the same value as VERSION in sw.js
 const AIR_START = { h: 5000, kcas: 350 };   // h is above the ground at the chosen place once the terrain is known
 const DEBUG = new URLSearchParams(location.search).get('debug') === '1';
 
@@ -65,6 +65,7 @@ function groundFt(state) {
 }
 Promise.all([jet.ready, loadTerrain()]).then(([, t]) => {
   terrain = t;
+  screens.labelPlaces(Object.fromEntries(PLACES.map((p) => [p.name, callOf(bullseyeOf(p, t.projection))])));
   airStart();                                   // now 5,000 ft above the ground that is there
   document.getElementById('fly').disabled = false;
 }, (e) => { console.error(e); document.getElementById('jet-error').hidden = false; });
@@ -119,9 +120,12 @@ function poseOf(state) {
   return { position: new THREE.Vector3(p[0], p[1], p[2]), quaternion: new THREE.Quaternion(q[0], q[1], q[2], q[3]) };
 }
 
+let route = null;              // the steerpoints from the chosen place round the loop
+let nav = null;                // what the HUD shows of them this frame
 function airStart() {
   const start = terrain ? airStartFor(placeNamed(place), terrain.projection, terrain.sampler) : { h: AIR_START.h };
   sim = new Simulation({ ...start, kcas: AIR_START.kcas });
+  route = terrain ? createRoute(place, terrain.projection) : null;
   carry = 0;
   prevPose = pose = poseOf(sim.state);
   throttleValue = sim.trimThrottle;
@@ -293,6 +297,21 @@ function projectDirection([n, e, d]) {
   const behind = projected.z > 1;
   return { x: (projected.x + 1) / 2 * view.clientWidth, y: (1 - projected.y) / 2 * view.clientHeight, visible: !behind };
 }
+// The steerpoint and bullseye for the HUD: the route steps on when passed;
+// the steerpoint's direction is to the sight on the ground, so it sits on it.
+function navigation() {
+  if (!route) return null;
+  const x = sim.state;
+  const jet = { x: x[IX.EAST] * METRES_PER_FOOT, z: -x[IX.NORTH] * METRES_PER_FOOT };
+  route.update(jet);
+  const sight = route.sight;
+  const { bearing, range } = bearingRange(jet, sight);
+  const dn = (-sight.z - x[IX.NORTH] * METRES_PER_FOOT), de = (sight.x - x[IX.EAST] * METRES_PER_FOOT);
+  const dd = x[IX.H] * METRES_PER_FOOT - terrain.sampler.heightAt(sight.x, sight.z);
+  const m = Math.hypot(dn, de, dd) || 1;
+  nav = { steer: { dir: [dn / m, de / m, dd / m], bearing, range, name: route.current.name }, bullseye: bearingRange(terrain.projection.toWorld(BULLSEYE.lat, BULLSEYE.lon), jet) };
+  return nav;
+}
 function velocityNed(state) {
   const v = Quat.bodyToNed(quaternionOf(state), [state[IX.U], state[IX.V], state[IX.W]]);
   const m = Math.hypot(v[0], v[1], v[2]) || 1;
@@ -346,7 +365,7 @@ function frame(now) {
 
   const air = sim.airdata;
   if (terrain) air.ground = groundFt(sim.state);
-  hud.draw(air, power, projectDirection, velocityNed(sim.state), noseNed(sim.state), look.active);
+  hud.draw(air, power, projectDirection, velocityNed(sim.state), noseNed(sim.state), look.active, navigation());
   if (mode === 'flying') stickIndicator.update(stick, sim.limited && stick.pitch > 0, !neutral || tilt.confidence < 0.3);   // under a screen it holds, so a recenter's glow waits for flight
 
   frames++;
@@ -375,6 +394,7 @@ window.rage = {
   get ground() { return groundFt(sim.state); },
   get terrain() { return terrain; },
   get place() { return place; },
+  get nav() { return nav; },
   set throttle(v) { throttleValue = v; throttle.set(v); },
   get neutral() { return neutral; },
   get draws() { return renderer.info.render.calls; },

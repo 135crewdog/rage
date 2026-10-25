@@ -29,7 +29,7 @@ The owner's design philosophy applies to everything a person sees or touches: ht
 | 1c | The app: world, aircraft, camera, HUD, UI, tilt, throttle, menus, PWA, Pages. Ends with the owner flying it on the iPhone. | Flown. Tilt, crash, update prompt and pause-when-hidden confirmed; the wake lock still to confirm |
 | 1d | **Second look.** Zenith and nadir symbols, Credits row, look-around by dragging, afterburner plume. | Done |
 | 2 | **Terrain.** Zion National Park from real elevation data, the crash on the ground that is there, radar altitude on the HUD; plus the recenter confirmation and movable control surfaces. The section "Milestone 2" below. | Flown. The tile's edge looked wrong; milestone 3 fixes it |
-| 3 | **Places.** A coarse base tile from Las Vegas to Lake Powell with five fine patches at the places worth flying, a place to choose on the start screen, and the F-16's steerpoint and bullseye on the HUD. The section "Milestone 3" below. | In progress: 1 and 2 built |
+| 3 | **Places.** A coarse base tile from Las Vegas to Lake Powell with five fine patches at the places worth flying, a place to choose on the start screen, and the F-16's steerpoint and bullseye on the HUD. The section "Milestone 3" below. | Built; waiting for the owner's flights |
 
 Later milestones (sound, a bandit to dogfight) get specified when milestone 3 is done.
 
@@ -87,6 +87,8 @@ The HUD is the cockpit's head-up display, drawn over the view the way a real fig
 - **Flight path marker**: where the jet is actually going.
 - **Waterline**: where the nose points.
 - **g** (one decimal), **AoA** in degrees (one decimal), **Mach** (two decimals), and **power state**: IDLE, MIL, or AB with the afterburner percentage. The power state shows the engine, not the slider, so the spool-up lag is visible.
+- **Steerpoint**: the next place on the loop (`src/places.js`), as the F-16's diamond on the sight when it is in the view, or its tadpole above the flight path marker with a tail pointing the way to turn when it isn't; the range in nautical miles and the place's name in the lower right. Passing within 2 nm steps to the next place.
+- **Bullseye**: the jet's own bearing and range from the bullseye, Springdale, in the lower left, as "BE 238/123".
 
 Every value comes from `src/sim/` air data (`docs/flight-model.md` section 9). The HUD sits inside the safe area, uses the same green in Light and Dark (see Departures), and has a thin dark outline so it reads against bright sky and dark ground.
 
@@ -100,7 +102,7 @@ Minimal, and as unobtrusive as the controls of a real cockpit:
 
 Screens:
 
-- **Start.** The name, a row of the five places (remembered as `rage.place`), and one button: **Fly**. Tapping it asks for motion access, keeps the screen awake and starts the flight at the chosen place; Fly again returns there. The motion permission request is the first statement in that tap's handler, before anything else, or iOS refuses it.
+- **Start.** The name, a row of the five places with each one's bullseye call under it (remembered as `rage.place`), and one button: **Fly**. Tapping it asks for motion access, keeps the screen awake and starts the flight at the chosen place; Fly again returns there. The motion permission request is the first statement in that tap's handler, before anything else, or iOS refuses it.
 - **Pause.** Resume, **Recenter controls**, Fly again (back to the air start), Settings. Recentering confirms itself: the button reads "Recentered" with a tick for a second, and the stick indicator glows once as its cross snaps to centre.
 - **Settings.** Theme: Light, Dark, Auto (Auto follows the phone). The app's version. A Credits row that expands in place to the jet's credit and licence. Done.
 - **Rotate your phone.** Shown whenever the phone is in portrait. It also says: if it won't rotate, turn off Portrait Orientation Lock in Control Center.
