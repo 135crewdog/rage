@@ -20,7 +20,7 @@ import { createStickIndicator } from './ui/stick.js';
 import { createScreens, loadPlace } from './ui/screens.js';
 import { upInScreen, tiltOf, stickFrom, smooth, MAPPING } from './input/tilt.js';
 
-export const APP_VERSION = '0.1.15';   // the same value as VERSION in sw.js
+export const APP_VERSION = '0.1.16';   // the same value as VERSION in sw.js
 const AIR_START = { h: 5000, kcas: 350 };   // h is above the ground at the chosen place once the terrain is known
 const DEBUG = new URLSearchParams(location.search).get('debug') === '1';
 
@@ -222,11 +222,15 @@ function resume() {
   keepAwake();
 }
 
+// Fly again returns to the start screen, at the air start of the chosen
+// place, so a different place can be picked before the next flight.
 function flyAgain() {
   if (portrait.matches) return;
   airStart();
-  recenter();
-  startFlight();
+  look.reset();
+  mode = 'start';
+  controls.hidden = true;
+  screens.show('start');
 }
 
 function crash() {
