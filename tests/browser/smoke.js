@@ -84,6 +84,11 @@ async function main() {
     assert.ok(Math.abs(start.agl - 5000) < 60, `air start 5,000 ft above the ground: ${start.agl}`);
     assert.ok(Math.abs(start.heading - 230) < 0.5, `heading 230 over Nellis: ${start.heading}`);
     assert.ok(start.alt > 6500 && start.alt < 7200, `Nellis is about 1,870 ft up: ${start.alt}`);
+    // the steerpoint is the next place on the loop, Zion, 118 nm away; the jet's bullseye call is Nellis's
+    const nav = await page.evaluate(() => ({ name: window.rage.nav.steer.name, range: window.rage.nav.steer.range, bearing: window.rage.nav.steer.bearing, be: window.rage.nav.bullseye }));
+    assert.equal(nav.name, 'ZION');
+    assert.ok(Math.abs(nav.range - 118) < 3 && Math.abs(nav.bearing - 58) < 3, `Zion at 058 for 118: ${nav.bearing} for ${nav.range}`);
+    assert.ok(Math.abs(nav.be.bearing - 239) < 3 && Math.abs(nav.be.range - 114) < 3, `Nellis is bullseye 239 for 114: ${nav.be.bearing} for ${nav.be.range}`);
     // the whole region loaded: five patches, and Las Vegas 194 km west is at its height
     const region = await page.evaluate(() => ({ patches: window.rage.terrain.region.patches.length, vegas: window.rage.terrain.sampler.heightAt(-194066, 120023) }));
     assert.equal(region.patches, 5, 'five patches');

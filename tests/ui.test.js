@@ -25,3 +25,15 @@ test('the ladder shows the zenith and nadir symbols once its window reaches stra
   assert.equal(apexFor(-78), 'nadir');
   assert.equal(apexFor(-90), 'nadir');
 });
+
+test('the tadpole points at the steerpoint on the screen, or left or right when it is behind', async () => {
+  const { cueDirection, relativeBearing } = await import('../src/hud/hud.js');
+  const from = { x: 400, y: 200 };
+  const u = cueDirection({ x: 700, y: 600, visible: true }, from, 0);
+  assert.ok(Math.abs(u.x - 0.6) < 1e-9 && Math.abs(u.y - 0.8) < 1e-9, `toward the point: ${u.x}, ${u.y}`);
+  assert.deepEqual(cueDirection({ x: 100, y: 100, visible: false }, from, -120), { x: -1, y: 0 }, 'behind and left: left');
+  assert.deepEqual(cueDirection(null, from, 150), { x: 1, y: 0 }, 'behind and right: right');
+  assert.equal(relativeBearing(350, 10), 20);
+  assert.equal(relativeBearing(10, 350), -20);
+  assert.equal(relativeBearing(90, 270), 180);
+});

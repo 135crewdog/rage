@@ -29,7 +29,7 @@ The owner's design philosophy applies to everything a person sees or touches: ht
 | 1c | The app: world, aircraft, camera, HUD, UI, tilt, throttle, menus, PWA, Pages. Ends with the owner flying it on the iPhone. | Flown. Tilt, crash, update prompt and pause-when-hidden confirmed; the wake lock still to confirm |
 | 1d | **Second look.** Zenith and nadir symbols, Credits row, look-around by dragging, afterburner plume. | Done |
 | 2 | **Terrain.** Zion National Park from real elevation data, the crash on the ground that is there, radar altitude on the HUD; plus the recenter confirmation and movable control surfaces. The section "Milestone 2" below. | Flown. The tile's edge looked wrong; milestone 3 fixes it |
-| 3 | **Places.** A coarse base tile from Las Vegas to Lake Powell with five fine patches at the places worth flying, a place to choose on the start screen, and the F-16's steerpoint and bullseye on the HUD. The section "Milestone 3" below. | In progress: 1 and 2 built |
+| 3 | **Places.** A coarse base tile from Las Vegas to Lake Powell with five fine patches at the places worth flying, a place to choose on the start screen, and the F-16's steerpoint and bullseye on the HUD. The section "Milestone 3" below. | Built; waiting for the owner's flights |
 
 Later milestones (sound, a bandit to dogfight) get specified when milestone 3 is done.
 
@@ -87,6 +87,8 @@ The HUD is the cockpit's head-up display, drawn over the view the way a real fig
 - **Flight path marker**: where the jet is actually going.
 - **Waterline**: where the nose points.
 - **g** (one decimal), **AoA** in degrees (one decimal), **Mach** (two decimals), and **power state**: IDLE, MIL, or AB with the afterburner percentage. The power state shows the engine, not the slider, so the spool-up lag is visible.
+- **Steerpoint**: the next place on the loop (`src/places.js`), as the F-16's diamond on the sight when it is in the view, or its tadpole above the flight path marker with a tail pointing the way to turn when it isn't; the range in nautical miles and the place's name in the lower right. Passing within 2 nm steps to the next place.
+- **Bullseye**: the jet's own bearing and range from the bullseye, Springdale, in the lower left, as "BE 238/123".
 
 Every value comes from `src/sim/` air data (`docs/flight-model.md` section 9). The HUD sits inside the safe area, uses the same green in Light and Dark (see Departures), and has a thin dark outline so it reads against bright sky and dark ground.
 
@@ -173,7 +175,7 @@ Agreed with the owner after flying milestone 2. Beyond the Zion tile's last row 
    - **Lake Powell:** over the Echo Cliffs south-east of Page, heading north-west over Horseshoe Bend to the dam and the lake. (The river below Horseshoe Bend is 6 km from the patch's edge, too close to the blend band.)
    - **Nellis AFB:** over Nellis, heading south-west down the Strip, with Lake Mead and Hoover Dam behind.
    - **Tests:** the lookup (patch, base, blend, outer fade) and each place's air start in `node --test`; the smoke test chooses a place and checks the air start is 5,000 ft above the ground there.
-3. **Steerpoint and bullseye.** Navigation the way the F-16 does it, with no menu. The five places form a fixed loop, Zion, Bryce, Lake Powell, Grand Canyon, Las Vegas and back to Zion, and choosing a place is choosing where to join it. The HUD shows one steerpoint, the next place on the loop: the jet's steerpoint diamond on the sight when it is in the view; when it isn't, the jet's tadpole, a small circle with a tail pointing the way, near the flight path marker; and the range in nautical miles in the lower right. Passing within 2 nm steps to the next place, as the jet's auto-sequencing does, so the loop can be flown round (an hour and four minutes at 400 knots). The bullseye is a fixed point, Springdale for now, one constant that the owner may move later; the HUD's lower left shows the jet's bearing and range from it, two numbers, as the jet does. The start screen shows each place's bullseye position next to its name ("Bryce 058 for 47"), so the other places can be found the way a pilot finds them.
+3. **Steerpoint and bullseye.** Navigation the way the F-16 does it, with no menu. The five places form a fixed loop, Zion, Bryce, Lake Powell, Grand Canyon, Las Vegas and back to Zion, and choosing a place is choosing where to join it. The HUD shows one steerpoint, the next place on the loop: the jet's steerpoint diamond on the sight when it is in the view; when it isn't, the jet's tadpole, a small circle with a tail pointing the way, near the flight path marker; and the range in nautical miles in the lower right. Passing within 2 nm steps to the next place, as the jet's auto-sequencing does, so the loop can be flown round (an hour and four minutes at 400 knots). The bullseye is a fixed point, Springdale for now, one constant that the owner may move later; the HUD's lower left shows the jet's bearing and range from it, two numbers, as the jet does. (The start screen was to show each place's bullseye call; the owner found it clutter and it was dropped.)
    - **Tests:** the loop's legs (heading and range from the places' positions), the auto-step, the bullseye numbers, and the tadpole's direction in `node --test`; the smoke test reads the steerpoint range at the air start.
 
 The downloads, from OpenTopography as for milestone 2 (the boxes carry a small margin):
@@ -192,6 +194,7 @@ Zion's patch is the milestone 2 tile, regenerated from its download in the new p
 
 Discussed, not adopted, might come back. Ask before building.
 
+- **Recut the flaperons along the artist's hinge line.** The first cut was a straight line 10.45 m from the nose; the model's own line slants from 10.04 m at the root to 10.61 m at the tip and the flaperon ends 3.67 m off the centreline, not 3.9. The owner also saw something wrong with the rudder, not yet identified. Next, after milestone 3.
 - **Double-tap the stick indicator to trim.** For a future aircraft without the F-16's automatic trim.
 - **A touch-stick fallback** when motion access is denied. The owner finds on-screen sticks unnatural.
 - **Bank compensation as an "easy mode."** The real F-16 has none.

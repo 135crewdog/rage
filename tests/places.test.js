@@ -48,3 +48,35 @@ test('places: the simulation takes the heading and position and is still trimmed
   near(sim.airdata.heading, 230, 0.05, 'heading holds');
   near(sim.state[IX.H], 7000, 1, 'height holds');
 });
+
+test('navigation: bearings and ranges in the flat world, and how the jet calls them', async () => {
+  const { bearingRange, callOf, bullseyeOf, nextPlace, createRoute, LOOP, STEP_NM } = await import('../src/places.js');
+  const o = { x: 0, z: 0 };
+  near(bearingRange(o, { x: 0, z: -1852 }).bearing, 0, 1e-9, 'north'); near(bearingRange(o, { x: 0, z: -1852 }).range, 1, 1e-9, 'one mile');
+  near(bearingRange(o, { x: 1852, z: 0 }).bearing, 90, 1e-9, 'east');
+  near(bearingRange(o, { x: -1852, z: 1852 }).bearing, 225, 1e-9, 'south-west');
+  assert.equal(callOf({ bearing: 58.4, range: 47.2 }), '058 for 47');
+  assert.equal(callOf({ bearing: 359.6, range: 0.4 }), '000 for 0', 'rounds round the compass');
+  const calls = Object.fromEntries(PLACES.map((p) => [p.name, bullseyeOf(p, projection)]));
+  for (const [name, b, r] of [['Bryce Canyon National Park', 58, 47], ['Lake Powell', 102, 74], ['Grand Canyon National Park', 147, 78], ['Nellis AFB', 239, 114]]) {
+    console.log(`  ${name}: bullseye ${callOf(calls[name])}`);
+    near(calls[name].bearing, b, 1.5, name); near(calls[name].range, r, 1.5, name);
+  }
+  assert.deepEqual(LOOP, ['Zion National Park', 'Bryce Canyon National Park', 'Lake Powell', 'Grand Canyon National Park', 'Nellis AFB']);
+  assert.equal(nextPlace('Zion National Park').name, 'Bryce Canyon National Park');
+  assert.equal(nextPlace('Nellis AFB').name, 'Zion National Park', 'the loop closes');
+  assert.ok(PLACES.every((p) => LOOP.includes(p.name)), 'every place is on the loop');
+});
+
+test('navigation: the route steps on when the jet passes within 2 nm of the steerpoint', async () => {
+  const { createRoute, STEP_NM } = await import('../src/places.js');
+  const route = createRoute('Nellis AFB', projection);
+  assert.equal(route.current.name, 'Zion National Park');
+  const zion = route.sight;
+  route.update({ x: zion.x + 3 * 1852, z: zion.z });
+  assert.equal(route.current.name, 'Zion National Park', '3 nm off: not yet');
+  route.update({ x: zion.x + (STEP_NM - 0.1) * 1852, z: zion.z });
+  assert.equal(route.current.name, 'Bryce Canyon National Park', 'inside 2 nm: the next place');
+  route.update({ x: zion.x, z: zion.z });
+  assert.equal(route.current.name, 'Bryce Canyon National Park', 'and it stays stepped');
+});
