@@ -187,6 +187,21 @@ async function main() {
     await page.click('#resume');
     await page.waitForFunction(() => window.rage.mode === 'flying');
 
+    // Fly again returns to the start screen, where another place can be chosen; Fly then starts there
+    await page.click('#pause');
+    await page.waitForFunction(() => window.rage.mode === 'paused');
+    await page.click('#fly-again');
+    await page.waitForFunction(() => window.rage.mode === 'start');
+    assert.equal(await page.evaluate(() => document.getElementById('screen-start').hidden), false, 'the start screen is back');
+    assert.equal(await page.evaluate(() => document.getElementById('controls').hidden), true, 'the controls are hidden on the start screen');
+    await page.click('#place button[data-place="Zion National Park"]');
+    await page.click('#fly');
+    await page.waitForFunction(() => window.rage.mode === 'flying');
+    const again = await page.evaluate(() => ({ heading: window.rage.sim.airdata.heading, agl: window.rage.sim.airdata.altitude - window.rage.ground, place: window.rage.place }));
+    assert.equal(again.place, 'Zion National Park');
+    assert.ok(Math.abs(again.heading) < 0.5 || Math.abs(again.heading - 360) < 0.5, `heading north over Springdale: ${again.heading}`);
+    assert.ok(Math.abs(again.agl - 5000) < 60, `5,000 ft above Springdale: ${again.agl}`);
+
     // the service worker registers and caches under a rage- prefix
     await page.waitForFunction(() => navigator.serviceWorker.controller !== null || navigator.serviceWorker.getRegistrations().then((r) => r.length > 0), null, { timeout: 15000 }).catch(() => {});
     const caches = await page.evaluate(async () => { await navigator.serviceWorker.ready; return (await window.caches.keys()); });
