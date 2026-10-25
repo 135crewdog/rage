@@ -9,7 +9,7 @@
 
 import * as THREE from 'three';
 
-const LEVELS = 6;      // 0.96, 1.9, 3.8, 7.7, 15, 31 km across: out to the far plane
+const LEVELS = 7;      // 0.96, 1.9, 3.8, 7.7, 15, 31, 61 km across: the outer edge is 29 km off, past the fog's end at 24 km
 const N = 96;          // cells per side of every level
 const SPACING = 10;    // m, the finest level's cell
 
