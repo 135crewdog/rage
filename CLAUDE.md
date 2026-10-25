@@ -27,9 +27,10 @@ The owner's design philosophy applies to everything a person sees or touches: ht
 | 1a | Simulation core: atmosphere, aero, engine, actuators, equations of motion, trim solver, air data. All of `docs/flight-model.md` section 12.1 and 12.3 passing. No visuals. | Done |
 | 1b | Flight control system, tuned. Section 12.2 passing. A headless flight script that flies a manoeuvre and prints a time history, so tuning is visible. | Done |
 | 1c | The app: world, aircraft, camera, HUD, UI, tilt, throttle, menus, PWA, Pages. Ends with the owner flying it on the iPhone. | Flown. Tilt, crash, update prompt and pause-when-hidden confirmed; the wake lock still to confirm |
-| 1d | **Second look.** The four items under "Next round" below, from the owner's first flights. | Built; waiting for the owner's flights |
+| 1d | **Second look.** Zenith and nadir symbols, Credits row, look-around by dragging, afterburner plume. | Done |
+| 2 | **Terrain.** Zion National Park from real elevation data, the crash on the ground that is there, radar altitude on the HUD; plus the recenter confirmation and movable control surfaces. The section "Milestone 2" below. | Proposed |
 
-Later milestones (terrain, sound, a bandit to dogfight) get specified when milestone 1 is done.
+Later milestones (sound, a bandit to dogfight) get specified when milestone 2 is done.
 
 ## Files
 
@@ -67,7 +68,7 @@ tests/browser/smoke.js    loads the app in headless Chromium and flies a few sec
 - **The jet** is a low-poly F-16C model, “F 16 C” by Usman Zia, CC BY 4.0, converted to glTF in `models/f16c.glb` and credited in `models/CREDITS.md` and under Credits in Settings. It is loaded with three.js's GLTFLoader addon, copied into `vendor/three/examples/jsm/` with its two helpers. Behind the nozzle, an afterburner plume (`src/render/plume.js`): two additive cones with shock diamonds, growing with the burner fraction the engine reports, hidden at dry power. Control surfaces don't need to move in milestone 1.
 - **The world** in milestone 1 is flat ground at 0 ft with a grid fine enough to read speed and height from, a sky that fades to a horizon colour, and fog that hides the far edge. Sun from above, no shadows.
 - **Air start:** 5,000 ft, 350 KCAS, wings level, heading north, trimmed for 1 g. The throttle slider starts at the trim setting. The FCS starts trimmed too (`docs/flight-model.md` 8.2).
-- **Crash:** below 0 ft the flight ends. The screen says "Crashed" with one button, "Fly again", which restarts from the air start.
+- **Crash:** below the ground the flight ends (0 ft until the terrain of milestone 2 arrives). The screen says "Crashed" with one button, "Fly again", which restarts from the air start.
 
 ## Camera
 
@@ -140,16 +141,19 @@ One version string, `APP_VERSION` in `src/main.js`, shown in Settings, and the s
 
 Not in milestone 1, and not planned unless the owner says so: missions, scores, a story, menus beyond those above, weapons, multiple aircraft, cockpit view, and everything in `docs/flight-model.md` section 13.
 
-## Next round (milestone 1d)
+## Milestone 2
 
-Agreed with the owner after the first flights; each is its own pull request, in this order.
+Agreed with the owner after milestone 1d. Each numbered item is its own pull request, in this order; the terrain is several.
 
-1. **Zenith and nadir symbols** on the pitch ladder at +90° and −90°, as the real F-16 HUD draws them (the exact symbols checked against references first), so straight up and straight down read without hunting between the 85° bars. Conformal like the rest of the ladder.
-2. **Credits as an expanding row** in Settings: a "Credits" row under the version that opens in place to show the jet's full credit and licence, instead of the line now under the version.
-3. **Look-around by dragging.** A finger dragged on the game view, outside the throttle, pause button and stick indicator, swings the chase camera around the jet in two axes: dragging right pulls the world right, so you end up looking left; up and down tilt over and under the jet. Lifting the finger eases the view back to the standard chase position. The jet keeps flying by tilt and the throttle keeps working under the other thumb. The HUD does what vazgriz's does: the ladder, horizon, waterline and flight-path marker stay where they are in the world, so they are seen only when the view happens to include them; airspeed, altitude, heading, g, AoA, Mach and power stay in their fixed places.
-4. **Afterburner visuals.** A tapered plume from the nozzle with shock diamonds, growing with the burner percentage, driven by the engine's afterburner state like the HUD's power readout, so it lights with the spool-up lag and not with the slider. The model's nozzle stays as it is. Nothing shows at dry power. vazgriz's afterburner effect (MIT) is the reference.
+1. **Recenter confirmation.** Tapping Recenter controls on the pause screen gives two signals: the button's label becomes "Recentered" with a tick for about a second, and the stick indicator's cross snaps to the centre with a brief glow.
+2. **Movable control surfaces.** The stabilators, flaperons and rudder of Usman Zia's model are cut out of its single mesh in Blender along the author's own hinge lines (the mesh has edge loops there), each given a pivot on its hinge, and exported as named parts in the same glTF. Every frame the renderer rotates them from the simulation's actuator states, so they move as the FCS moves them and never otherwise. Leading-edge flaps are not in the book's data and stay fixed. The cut replaces `models/f16c.glb` in one pull request, so reverting that pull request restores the uncut model; if the cut comes out badly the owner looks for a model with separate surfaces instead.
+3. **Terrain: Zion National Park**, as vazgriz's reference sim has it, from real elevation data. The owner downloads a public-domain SRTM 30 m elevation tile covering about 60 km square around Zion Canyon (roughly 37.03° to 37.57° N, 113.29° to 112.61° W) and uploads it; it is converted to a heightmap image of about 1.5 MB in `terrain/`, with its source and licence noted in `terrain/CREDITS.md`. The ground is a grid that follows the camera, displaced by the heightmap on the GPU in rings of increasing coarseness, with the same heights read on the CPU for the crash and the radar altitude. Beyond the tile the ground flattens at the edge height under the fog. Colour comes from height and slope with a fine procedural grain so speed reads at low level: sandstone reds and greys on steep rock, green in the valleys, lighter on the plateaus. No image textures. The flat-ground grid goes. Sky, fog and sun stay.
+   - **Crash:** the flight ends when the jet is below the ground that is there, not below 0 ft. `docs/flight-model.md` is updated to say so.
+   - **Air start:** 5,000 ft above the ground over a chosen valley, heading toward the canyon; still 350 KCAS, wings level, trimmed.
+   - **Radar altitude** on the HUD in the F-16's AUTO mode: below 1,500 ft above the ground the altitude window shows radar altitude with an R; above that, barometric as now.
+   - **Tests:** the height sampler and the crash and radar-altitude rules in `node --test`; the smoke test checks the terrain draws and the radar altitude reads.
 
-Settled at the same time: the transonic patch in `docs/flight-model.md` 5.2 is enough for now; no placard warning. Milestone 2 waits until this round is done.
+Settled at the same time: the transonic patch in `docs/flight-model.md` 5.2 stays; milestone 3 (sound, then a bandit) waits until this is done.
 
 ## Parked
 
@@ -158,7 +162,7 @@ Discussed, not adopted, might come back. Ask before building.
 - **Double-tap the stick indicator to trim.** For a future aircraft without the F-16's automatic trim.
 - **A touch-stick fallback** when motion access is denied. The owner finds on-screen sticks unnatural.
 - **Bank compensation as an "easy mode."** The real F-16 has none.
-- **Terrain, sound, a bandit to dogfight.** Likely next milestones.
+- **Sound, a bandit to dogfight.** Likely next milestones.
 - **Takeoff and landing**, with the FCS's gear-down laws.
 - **NASA's high-fidelity data**, which would allow leading-edge flaps, departures and the deep stall.
 - **A heavier, more powerful F-16C** (real half-fuel weight with an F110-GE-129 engine). The book's lighter jet with its weaker engine already turns like a real one; changing one without the other would break that.
