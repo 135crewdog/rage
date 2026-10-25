@@ -41,7 +41,7 @@ export class Simulation {
     const x = this.state, a = this.aux;
     return {
       alphaDeg: a.alpha * R2D, p: x[IX.P], q: x[IX.Q], r: x[IX.R],
-      nz: a.nz, ny: a.ny, qbar: a.qbar, mach: a.mach, el: x[IX.EL],
+      nz: a.nz, ny: a.ny, qbar: a.qbar, mach: a.mach, el: x[IX.EL], ail: x[IX.AIL], rdr: x[IX.RDR],
     };
   }
 

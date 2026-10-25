@@ -110,6 +110,9 @@ async function main() {
 
     // roll: turn the wheel 25° to the right
     await feed(30, -25, 1.5);
+    // the control surfaces follow the FCS: a left roll command puts the right flaperon down
+    const sf = await page.evaluate(() => ({ el: window.rage.surfaces.el, ail: window.rage.surfaces.ail, rdr: window.rage.surfaces.rdr }));
+    assert.ok(Math.abs(sf.ail) > 1, `aileron deflected in the roll: ${sf.ail}`);
     const rolled = await page.evaluate(() => ({ bank: window.rage.sim.airdata.roll, stick: window.rage.stick.roll }));
     assert.ok(Math.abs(rolled.stick) > 0.5, `roll stick moved: ${rolled.stick}`);
     assert.ok(Math.abs(rolled.bank) > 10, `the jet banked: ${rolled.bank}`);

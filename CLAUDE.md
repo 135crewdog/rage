@@ -28,7 +28,7 @@ The owner's design philosophy applies to everything a person sees or touches: ht
 | 1b | Flight control system, tuned. Section 12.2 passing. A headless flight script that flies a manoeuvre and prints a time history, so tuning is visible. | Done |
 | 1c | The app: world, aircraft, camera, HUD, UI, tilt, throttle, menus, PWA, Pages. Ends with the owner flying it on the iPhone. | Flown. Tilt, crash, update prompt and pause-when-hidden confirmed; the wake lock still to confirm |
 | 1d | **Second look.** Zenith and nadir symbols, Credits row, look-around by dragging, afterburner plume. | Done |
-| 2 | **Terrain.** Zion National Park from real elevation data, the crash on the ground that is there, radar altitude on the HUD; plus the recenter confirmation and movable control surfaces. The section "Milestone 2" below. | In progress: 1 done |
+| 2 | **Terrain.** Zion National Park from real elevation data, the crash on the ground that is there, radar altitude on the HUD; plus the recenter confirmation and movable control surfaces. The section "Milestone 2" below. | In progress: 2 done |
 
 Later milestones (sound, a bandit to dogfight) get specified when milestone 2 is done.
 
@@ -52,7 +52,7 @@ src/render/               all three.js code: world, aircraft, camera, frame conv
 src/hud/                  the HUD
 src/ui/                   throttle, stick indicator, pause button, screens, settings
 vendor/three/             three.js r186: build/three.module.js, build/three.core.js, examples/jsm/ (GLTFLoader and its helpers), LICENSE, VERSION
-models/                   f16c.glb and CREDITS.md
+models/                   f16c.glb, CREDITS.md, cut-surfaces.py (the one-off Blender cut)
 tests/*.test.js           node --test: model, FCS, input maths, frames
 tests/flight/             the flight tests of docs/flight-model.md 12.2 and 12.3
 tests/browser/smoke.js    loads the app in headless Chromium and flies a few seconds of simulated tilt
@@ -65,7 +65,7 @@ tests/browser/smoke.js    loads the app in headless Chromium and flies a few sec
 
 ## The aircraft and the world
 
-- **The jet** is a low-poly F-16C model, “F 16 C” by Usman Zia, CC BY 4.0, converted to glTF in `models/f16c.glb` and credited in `models/CREDITS.md` and under Credits in Settings. It is loaded with three.js's GLTFLoader addon, copied into `vendor/three/examples/jsm/` with its two helpers. Behind the nozzle, an afterburner plume (`src/render/plume.js`): two additive cones with shock diamonds, growing with the burner fraction the engine reports, hidden at dry power. Control surfaces don't need to move in milestone 1.
+- **The jet** is a low-poly F-16C model, “F 16 C” by Usman Zia, CC BY 4.0, converted to glTF in `models/f16c.glb` and credited in `models/CREDITS.md` and under Credits in Settings. It is loaded with three.js's GLTFLoader addon, copied into `vendor/three/examples/jsm/` with its two helpers. Its stabilators, flaperons and rudder are separate parts, cut along the author's hinge lines by `models/cut-surfaces.py`, and move every frame to the simulation's actuator positions; the stabilators also move differentially with roll, a quarter of the flaperon deflection, as the real tails do. Behind the nozzle, an afterburner plume (`src/render/plume.js`): two additive cones with shock diamonds, growing with the burner fraction the engine reports, hidden at dry power. Control surfaces don't need to move in milestone 1.
 - **The world** in milestone 1 is flat ground at 0 ft with a grid fine enough to read speed and height from, a sky that fades to a horizon colour, and fog that hides the far edge. Sun from above, no shadows.
 - **Air start:** 5,000 ft, 350 KCAS, wings level, heading north, trimmed for 1 g. The throttle slider starts at the trim setting. The FCS starts trimmed too (`docs/flight-model.md` 8.2).
 - **Crash:** below the ground the flight ends (0 ft until the terrain of milestone 2 arrives). The screen says "Crashed" with one button, "Fly again", which restarts from the air start.
