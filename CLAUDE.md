@@ -28,7 +28,7 @@ The owner's design philosophy applies to everything a person sees or touches: ht
 | 1b | Flight control system, tuned. Section 12.2 passing. A headless flight script that flies a manoeuvre and prints a time history, so tuning is visible. | Done |
 | 1c | The app: world, aircraft, camera, HUD, UI, tilt, throttle, menus, PWA, Pages. Ends with the owner flying it on the iPhone. | Flown. Tilt, crash, update prompt and pause-when-hidden confirmed; the wake lock still to confirm |
 | 1d | **Second look.** Zenith and nadir symbols, Credits row, look-around by dragging, afterburner plume. | Done |
-| 2 | **Terrain.** Zion National Park from real elevation data, the crash on the ground that is there, radar altitude on the HUD; plus the recenter confirmation and movable control surfaces. The section "Milestone 2" below. | In progress: 2 done |
+| 2 | **Terrain.** Zion National Park from real elevation data, the crash on the ground that is there, radar altitude on the HUD; plus the recenter confirmation and movable control surfaces. The section "Milestone 2" below. | Built; waiting for the owner's flights |
 
 Later milestones (sound, a bandit to dogfight) get specified when milestone 2 is done.
 
@@ -48,7 +48,8 @@ src/main.js               composition root: wires sim, input, renderer, HUD and 
 src/sim/                  the simulation: pure JS, no DOM, no three.js, no browser APIs
 src/sim/data/             the F-16 tables as JS modules, re-keyed from docs/f16-data.md
 src/input/                tilt and look-around; browser-facing, maths kept pure and tested
-src/render/               all three.js code: world, aircraft, camera, frame conversions
+src/render/               all three.js code: world, terrain, aircraft, plume, camera, frame conversions
+terrain/                  zion.png and zion.json (the heightmap), CREDITS.md, make-heightmap.py (the GeoTIFF conversion)
 src/hud/                  the HUD
 src/ui/                   throttle, stick indicator, pause button, screens, settings
 vendor/three/             three.js r186: build/three.module.js, build/three.core.js, examples/jsm/ (GLTFLoader and its helpers), LICENSE, VERSION
@@ -66,9 +67,9 @@ tests/browser/smoke.js    loads the app in headless Chromium and flies a few sec
 ## The aircraft and the world
 
 - **The jet** is a low-poly F-16C model, “F 16 C” by Usman Zia, CC BY 4.0, converted to glTF in `models/f16c.glb` and credited in `models/CREDITS.md` and under Credits in Settings. It is loaded with three.js's GLTFLoader addon, copied into `vendor/three/examples/jsm/` with its two helpers. Its stabilators, flaperons and rudder are separate parts, cut along the author's hinge lines by `models/cut-surfaces.py`, and move every frame to the simulation's actuator positions; the stabilators also move differentially with roll, a quarter of the flaperon deflection, as the real tails do. Behind the nozzle, an afterburner plume (`src/render/plume.js`): two additive cones with shock diamonds, growing with the burner fraction the engine reports, hidden at dry power. Control surfaces don't need to move in milestone 1.
-- **The world** in milestone 1 is flat ground at 0 ft with a grid fine enough to read speed and height from, a sky that fades to a horizon colour, and fog that hides the far edge. Sun from above, no shadows.
-- **Air start:** 5,000 ft, 350 KCAS, wings level, heading north, trimmed for 1 g. The throttle slider starts at the trim setting. The FCS starts trimmed too (`docs/flight-model.md` 8.2).
-- **Crash:** below the ground the flight ends (0 ft until the terrain of milestone 2 arrives). The screen says "Crashed" with one button, "Fly again", which restarts from the air start.
+- **The world** is Zion National Park: a 60 km square of real elevation data (`terrain/`, see its CREDITS.md) drawn as a geometry clipmap by `src/render/terrain.js`, coloured by height and slope with a fine grain; the same heightmap read on the CPU by `src/render/heightmap.js` for the crash and the radar altitude. A sky that fades to a horizon colour, fog that hides the far edge, sun from above, no shadows.
+- **Air start:** 5,000 ft above the ground over Springdale, at the mouth of Zion Canyon, 350 KCAS, wings level, heading north up the canyon, trimmed for 1 g. The throttle slider starts at the trim setting. The FCS starts trimmed too (`docs/flight-model.md` 8.2).
+- **Crash:** below the ground that is there the flight ends. The screen says "Crashed" with one button, "Fly again", which restarts from the air start.
 
 ## Camera
 
@@ -78,7 +79,7 @@ A chase camera behind and slightly above the jet, like vazgriz's flight sim (his
 
 The HUD is the cockpit's head-up display, drawn over the view the way a real fighter HUD looks and the way vazgriz's does: thin green symbols and numbers, no boxes of colour, no backgrounds. It is not part of the UI.
 
-- **Airspeed** in KCAS on the left; **altitude** in feet on the right.
+- **Airspeed** in KCAS on the left; **altitude** in feet on the right: barometric, or below 1,500 ft above the ground the radar altitude with an R, as the F-16's AUTO mode shows it.
 - **Heading** across the top, degrees true.
 - **Pitch ladder** with the horizon line, every 5° (dashed below the horizon), rolling with the jet. At straight up and straight down, the F-16's zenith symbol (an eight-pointed star with a tail) and nadir symbol (a hatched circle with a tail), upright on the screen.
 - **Flight path marker**: where the jet is actually going.
