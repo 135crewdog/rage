@@ -257,7 +257,7 @@ export function createHud(canvas) {
     text(power.label === 'AB' ? `AB ${power.percent}%` : power.label === 'DRY' ? `${power.percent}%` : power.label, left, rows[3], 'left', 14);
     if (nav) {
       text(`BE ${String(Math.round(nav.bullseye.bearing) % 360).padStart(3, '0')}/${Math.round(nav.bullseye.range)}`, left, bottom, 'left', 14);
-      text(`${nav.steer.range.toFixed(1)} > ${nav.steer.name.toUpperCase()}`, right, bottom, 'right', 14);
+      text(`${nav.steer.range.toFixed(1)} > ${nav.steer.name}`, right, bottom, 'right', 14);
     }
   }
 

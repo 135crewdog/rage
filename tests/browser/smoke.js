@@ -75,8 +75,8 @@ async function main() {
 
     // choose a place, then tap Fly: no permission prompt in Chromium, so flight starts at once
     await page.waitForFunction(() => !document.getElementById('fly').disabled);
-    await page.click('#place button[data-place="Las Vegas"]');
-    assert.equal(await page.evaluate(() => localStorage.getItem('rage.place')), 'Las Vegas', 'the place is remembered');
+    await page.click('#place button[data-place="Nellis AFB"]');
+    assert.equal(await page.evaluate(() => localStorage.getItem('rage.place')), 'Nellis AFB', 'the place is remembered');
     await page.click('#fly');
     await page.waitForFunction(() => window.rage.mode === 'flying');
     // the terrain is under the jet: the air start is 5,000 ft above the ground at the chosen place, pointed at the sight
@@ -86,10 +86,9 @@ async function main() {
     assert.ok(start.alt > 6500 && start.alt < 7200, `Nellis is about 1,870 ft up: ${start.alt}`);
     // the steerpoint is the next place on the loop, Zion, 118 nm away; the jet's bullseye call is Nellis's
     const nav = await page.evaluate(() => ({ name: window.rage.nav.steer.name, range: window.rage.nav.steer.range, bearing: window.rage.nav.steer.bearing, be: window.rage.nav.bullseye }));
-    assert.equal(nav.name, 'Zion');
+    assert.equal(nav.name, 'ZION');
     assert.ok(Math.abs(nav.range - 118) < 3 && Math.abs(nav.bearing - 58) < 3, `Zion at 058 for 118: ${nav.bearing} for ${nav.range}`);
     assert.ok(Math.abs(nav.be.bearing - 239) < 3 && Math.abs(nav.be.range - 114) < 3, `Nellis is bullseye 239 for 114: ${nav.be.bearing} for ${nav.be.range}`);
-    assert.equal(await page.evaluate(() => document.querySelector('#place button[data-place="Bryce"] small').textContent), '058 for 47', 'the start screen gives each place\'s bullseye call');
     // the whole region loaded: five patches, and Las Vegas 194 km west is at its height
     const region = await page.evaluate(() => ({ patches: window.rage.terrain.region.patches.length, vegas: window.rage.terrain.sampler.heightAt(-194066, 120023) }));
     assert.equal(region.patches, 5, 'five patches');

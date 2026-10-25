@@ -10,7 +10,7 @@ import * as Quat from './sim/quaternion.js';
 import { createWorld } from './render/world.js';
 import { createTerrain } from './render/terrain.js';
 import { decodeHeights, createSampler, createProjection } from './render/heightmap.js';
-import { placeNamed, airStartFor, createRoute, bearingRange, bullseyeOf, callOf, BULLSEYE, PLACES } from './places.js';
+import { placeNamed, airStartFor, createRoute, bearingRange, BULLSEYE } from './places.js';
 import { createAircraft } from './render/aircraft.js';
 import { createChaseCamera } from './render/camera.js';
 import { createLook, attachLook } from './input/look.js';
@@ -65,7 +65,6 @@ function groundFt(state) {
 }
 Promise.all([jet.ready, loadTerrain()]).then(([, t]) => {
   terrain = t;
-  screens.labelPlaces(Object.fromEntries(PLACES.map((p) => [p.name, callOf(bullseyeOf(p, t.projection))])));
   airStart();                                   // now 5,000 ft above the ground that is there
   document.getElementById('fly').disabled = false;
 }, (e) => { console.error(e); document.getElementById('jet-error').hidden = false; });
@@ -309,7 +308,7 @@ function navigation() {
   const dn = (-sight.z - x[IX.NORTH] * METRES_PER_FOOT), de = (sight.x - x[IX.EAST] * METRES_PER_FOOT);
   const dd = x[IX.H] * METRES_PER_FOOT - terrain.sampler.heightAt(sight.x, sight.z);
   const m = Math.hypot(dn, de, dd) || 1;
-  nav = { steer: { dir: [dn / m, de / m, dd / m], bearing, range, name: route.current.name }, bullseye: bearingRange(terrain.projection.toWorld(BULLSEYE.lat, BULLSEYE.lon), jet) };
+  nav = { steer: { dir: [dn / m, de / m, dd / m], bearing, range, name: route.current.hud }, bullseye: bearingRange(terrain.projection.toWorld(BULLSEYE.lat, BULLSEYE.lon), jet) };
   return nav;
 }
 function velocityNed(state) {
