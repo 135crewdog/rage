@@ -121,6 +121,15 @@ test('the real region: known places are at their heights', () => {
     near(got, h, tol, name);
   }
   near(s.heightAt(0, 0), 1246, 30, 'the world origin is Springdale');
+  // the lakes: each box holds its lake, dead flat at the level the survey recorded
+  assert.equal(meta.lakes.length, 2);
+  for (const [name, lat, lon] of [['Lake Powell', 36.95, -111.47], ['Lake Mead', 36.02, -114.73]]) {
+    const lake = meta.lakes.find((l) => l.name === name);
+    const { x, z } = p.toWorld(lat, lon);
+    assert.ok(x > lake.x0 && x < lake.x1 && z > lake.z0 && z < lake.z1, `${name}'s box holds its water`);
+    near(s.heightAt(x, z), lake.level, 1, `${name} at its level`);
+    near(s.heightAt(x + 100, z), s.heightAt(x, z), 0.5, `${name} is flat`);
+  }
   // where Zion and Bryce overlap the finer Zion shows, and the ground is continuous: no step anywhere along a line through the overlap
   let worst = 0;
   for (let x = 20000; x <= 40000; x += 1) { const d = Math.abs(s.heightAt(x + 0.002, -14540) - s.heightAt(x, -14540)); if (d > worst) worst = d; }
