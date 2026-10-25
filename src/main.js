@@ -335,7 +335,7 @@ function frame(now) {
   const air = sim.airdata;
   if (terrain) air.ground = groundFt(sim.state);
   hud.draw(air, power, projectDirection, velocityNed(sim.state), noseNed(sim.state), look.active);
-  stickIndicator.update(stick, sim.limited && stick.pitch > 0, !neutral || tilt.confidence < 0.3);
+  if (mode === 'flying') stickIndicator.update(stick, sim.limited && stick.pitch > 0, !neutral || tilt.confidence < 0.3);   // under a screen it holds, so a recenter's glow waits for flight
 
   frames++;
   if (now - fpsAt > 500) { fps = frames * 1000 / (now - fpsAt); frames = 0; fpsAt = now; }
