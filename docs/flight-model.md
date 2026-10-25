@@ -114,7 +114,7 @@ Rigid body, 6 degrees of freedom, constant mass, flat non-rotating earth. Use th
 
 **Outside the data.** The tables cover α −10..45° and β ±30°; beyond that they extrapolate linearly from the end segment, as the book does. The FCS keeps the jet well inside (section 8.5). Hard pushes are expected to reach α of −10 to −12° (a −3 g push at 250 KCAS needs about −11°); that's fine. Beyond α < −15° or α > 45°, the simulation must stay numerically stable and set an `outOfEnvelope` flag the debug overlay shows. It must never produce NaN.
 
-**Ground.** When h ≤ 0 the flight ends in a crash state. There is no landing gear in this model.
+**Ground.** When the jet is below the ground the flight ends in a crash state. The model itself knows only sea level (h ≤ 0); the app compares h with the terrain's height under the jet, read from the same heightmap the ground is drawn from. There is no landing gear in this model.
 
 ## 5. Aerodynamics
 
