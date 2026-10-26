@@ -166,6 +166,7 @@ async function main() {
     assert.equal(await page.evaluate(() => document.documentElement.dataset.theme), 'dark');
     assert.equal(await page.evaluate(() => localStorage.getItem('rage.theme')), 'dark');
     await shot('settings');
+    assert.equal(await page.evaluate(() => document.getElementById('feedback').getAttribute('href')), 'mailto:135crewdog.github@gmail.com?subject=Rage%200.1.21%20feedback', 'feedback opens an email with the version');
     // credits: opens from settings, six entries, back returns to settings
     await page.click('#credits-open');
     assert.equal(await page.evaluate(() => document.getElementById('screen-credits').hidden), false, 'credits screen shows');

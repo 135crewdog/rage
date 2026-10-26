@@ -113,6 +113,7 @@ p { margin: 0; }
   width: 100%; padding: 14px 16px; border: 0; border-radius: 12px; font-size: 17px; font-weight: 600;
   background: var(--fill); color: var(--text);
 }
+a.btn { display: block; box-sizing: border-box; text-align: center; text-decoration: none; }
 .btn:disabled { opacity: 0.4; }
 .btn.primary { background: var(--accent); color: var(--accent-text); }
 .link { border: 0; background: none; color: var(--accent); font-size: 17px; padding: 0; }

@@ -104,7 +104,7 @@ Screens:
 
 - **Start.** The name, a list of the five places by their full names (remembered as `rage.place`), and one button: **Fly**. Tapping it asks for motion access, keeps the screen awake and starts the flight at the chosen place. Fly again, on the pause and crash screens, comes back here, so the place can be changed between flights. The motion permission request is the first statement in that tap's handler, before anything else, or iOS refuses it.
 - **Pause.** Resume, **Recenter controls**, Fly again (back to the start screen, where a place can be picked before flying), Settings. Recentering confirms itself: the button reads "Recentered" with a tick for a second, and the stick indicator glows once as its cross snaps to centre.
-- **Settings.** Theme: Light, Dark, Auto (Auto follows the phone). A Credits button (a user guide and user feedback will join it). The app's version at the bottom. Done.
+- **Settings.** Theme: Light, Dark, Auto (Auto follows the phone). A **Send feedback** button that opens an email to 135crewdog.github@gmail.com with the version in the subject (a user guide will join it). A Credits button. The app's version at the bottom. Done.
 - **Credits.** Opened from Settings, with Back. Six short entries, each a title and a sentence or two with its links: the flight model (Stevens, Lewis and Johnson's book, from NASA TP-1538), the camera and HUD (vazgriz's series and code, MIT), the terrain (NASA SRTM via OpenTopography, public domain), the jet (Usman Zia, CC BY 4.0), three.js (MIT), and Made by: the GitHub user and Claude Code, never the owner's name.
 - **Rotate your phone.** Shown whenever the phone is in portrait. It also says: if it won't rotate, turn off Portrait Orientation Lock in Control Center.
 - **Motion access denied.** If the permission is refused, say so plainly and how to fix it: close the app completely, open it again, tap Fly and choose Allow. There is no touch-stick fallback (see Parked).
@@ -186,6 +186,8 @@ Agreed after the owner's flights, as follow-ups in the same milestone:
 5. **Water.** SRTM recorded Lake Powell and Lake Mead full, as dead-flat ground at 1,124 m and 372 m. The terrain shader paints water where the ground is within a couple of metres of a lake's level and nearly flat, inside that lake's box: deep blue-green, the sky in it at a low angle, the sun's glint, a faint ripple, no reflections of the land. The boxes and levels live in `terrain/region.json`, from `make-heightmap.py`. Rivers stay as they are.
 
 6. **Credits.** The expanding Credits row in Settings becomes a button opening a Credits screen with Back: the flight model's sources, vazgriz's series, the terrain data, the jet, three.js, and who made it (the GitHub user and Claude Code).
+
+7. **Feedback.** A Send feedback button in Settings that opens an email to 135crewdog.github@gmail.com, the version in the subject. No form, no server: the phone's own Mail app.
 
 The downloads, from OpenTopography as for milestone 2 (the boxes carry a small margin):
 
