@@ -76,4 +76,4 @@ The simulation lives in `src/sim/` and is plain JavaScript with no DOM, no three
 
 The ground is `terrain/base.png` and `terrain/places.png`, a coarse base tile and an atlas of five fine patches made from public-domain SRTM elevation data by `terrain/make-heightmap.py` (see `terrain/CREDITS.md`), with `terrain/region.json` saying where each lies; `src/render/heightmap.js` reads them on the CPU for the crash and the radar altitude and `src/render/terrain.js` draws them as a geometry clipmap with the same lookup on the GPU. To remake them, download the GeoTIFFs listed in `CLAUDE.md` under milestone 3 and run `python terrain/make-heightmap.py base.tif zion.tif grand-canyon.tif bryce.tif page.tif las-vegas.tif terrain/` (needs numpy and tifffile).
 
-The jet is `models/f16c.glb`, "F 16 C" by Usman Zia under CC BY 4.0. The licence needs the credit kept: it is in `models/CREDITS.md` and on the Settings screen.
+The jet is `models/f16c.glb`, "F 16 C" by Usman Zia under CC BY 4.0. The licence needs the credit kept: it is in `models/CREDITS.md` and on the Credits screen, opened from Settings.

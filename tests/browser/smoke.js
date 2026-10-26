@@ -166,6 +166,13 @@ async function main() {
     assert.equal(await page.evaluate(() => document.documentElement.dataset.theme), 'dark');
     assert.equal(await page.evaluate(() => localStorage.getItem('rage.theme')), 'dark');
     await shot('settings');
+    // credits: opens from settings, six entries, back returns to settings
+    await page.click('#credits-open');
+    assert.equal(await page.evaluate(() => document.getElementById('screen-credits').hidden), false, 'credits screen shows');
+    assert.equal(await page.evaluate(() => document.querySelectorAll('#screen-credits .credits h3').length), 6, 'six credits');
+    await shot('credits');
+    await page.click('#credits-back');
+    assert.equal(await page.evaluate(() => document.getElementById('screen-settings').hidden), false, 'back to settings');
     await page.click('#settings-done');
     await page.click('#resume');
     await page.waitForFunction(() => window.rage.mode === 'flying');
