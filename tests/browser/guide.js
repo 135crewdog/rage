@@ -7,11 +7,12 @@
 // symbol labelled (the HUD reports where it drew each one), and a map of the
 // region drawn from the real heightmaps and the places file. Then it loads
 // the guide and checks that it reads the app's version, places and credits
-// and that every picture is there. The Pages workflow runs it before
-// publishing; the pictures are never checked in. Playwright and Chromium
-// must be installed as developer tools.
+// and that every picture is there. The pictures always go to guide/img/,
+// because that is where the guide looks for them; they are never checked
+// in, and the Pages workflow runs this before publishing. Playwright and
+// Chromium must be installed as developer tools.
 //
-//   node tests/browser/guide.js [output-dir]      default guide/img
+//   node tests/browser/guide.js
 
 import { join } from 'node:path';
 import { mkdir, writeFile } from 'node:fs/promises';
@@ -155,7 +156,7 @@ async function drawMap(width, dpr = 2) {
 }
 
 async function main() {
-  const out = process.argv[2] ?? join(ROOT, 'guide', 'img');
+  const out = join(ROOT, 'guide', 'img');
   await mkdir(out, { recursive: true });
   const { chromium } = require('playwright');
   const { server, url } = await serve();

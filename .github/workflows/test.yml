@@ -27,7 +27,7 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: node tests/browser/smoke.js shots
       # the user guide's pictures, made from the app; the Pages workflow publishes them
-      - run: node tests/browser/guide.js guide/img
+      - run: node tests/browser/guide.js
       - uses: actions/upload-artifact@v4
         if: always()
         with:
