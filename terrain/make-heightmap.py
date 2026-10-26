@@ -26,6 +26,13 @@ FADE = 10000.0                   # m: the base eases to one flat height over thi
 BASE_WIDTH = 2048                # posts across the base tile; its height follows the box
 ATLAS = (2048, 3072)             # the atlas image: 1,024-post patches, two across
 PATCH = 1024                     # posts per side of every patch
+# The lakes: SRTM saw them full in February 2000 and recorded their surfaces
+# as dead-flat ground; the renderer paints water where the ground is flat at a
+# lake's level inside its box. name, water level (m), box (south, north, west, east).
+LAKES = [
+    ('Lake Powell', 1124.0, (36.85, 37.65, -111.65, -110.80)),
+    ('Lake Mead', 372.0, (35.95, 36.55, -114.95, -114.00)),
+]
 # name, centre lat, centre lon, side in metres
 PATCHES = [
     ('Zion', 37.30, -112.95, 60000.0),
@@ -116,10 +123,14 @@ for k, ((name, lat, lon, side), src) in enumerate(zip(PATCHES, srcs[1:])):
 lo, hi = float(np.floor(min(z.min() for z in zs_all))), float(np.ceil(max(z.max() for z in zs_all)))
 atlas[atlas == 0] = lo
 open(os.path.join(out, 'places.png'), 'wb').write(png(quantise(atlas, lo, hi)))
+lakes = []
+for name, level, (south, north, west, east) in LAKES:
+    x0, z0 = world(north, west); x1, z1 = world(south, east)
+    lakes.append(dict(name=name, level=level, x0=round(x0, 1), z0=round(z0, 1), x1=round(x1, 1), z1=round(z1, 1)))
 meta = dict(
     name='Zion to Las Vegas, SRTM 3 arc-second base with 1 arc-second patches',
     origin=list(ORIGIN), lat0=LAT0, mLat=M_LAT, mLon=round(M_LON, 3), blend=BLEND, fade=FADE,
-    base=meta_base, atlas=dict(image='places.png', w=ATLAS[0], h=ATLAS[1], min=lo, max=hi), patches=patches,
+    base=meta_base, atlas=dict(image='places.png', w=ATLAS[0], h=ATLAS[1], min=lo, max=hi), patches=patches, lakes=lakes,
 )
 json.dump(meta, open(os.path.join(out, 'region.json'), 'w'))
 for f in ('base.png', 'places.png', 'region.json'):

@@ -4,8 +4,9 @@
 // snapped to its own grid so nothing swims, each with a hole where the finer
 // one sits; the vertex shader lifts every vertex to the height read from the
 // heightmaps (the same lookup heightmap.js does on the CPU), and the fragment
-// shader colours the ground by height and slope with a fine grain, lit by the
-// sun and faded into the fog. The grids are positioned relative to the
+// shader colours the ground by height and slope with a fine grain, paints
+// the lakes where the survey is flat at their levels, lights it by the sun
+// and fades it into the fog. The grids are positioned relative to the
 // camera, so single-precision positions stay exact 250 km from the origin.
 // Metres; world x east, z south, y up.
 
@@ -75,8 +76,10 @@ const vertexShader = (patches) => `${heightGlsl(patches)}
     gl_Position = projectionMatrix * mat4(mat3(viewMatrix)) * vec4(rp, 1.0);
   }`;
 
-const fragmentShader = (patches) => `${heightGlsl(patches)}
+const fragmentShader = (patches, lakes) => `${heightGlsl(patches)}
   uniform vec3 sun, fogColor; uniform float fogNear, fogFar;
+  uniform vec4 lakeBox[${lakes}];     // x0, z0, x1, z1
+  uniform float lakeLevel[${lakes}];  // m above the sea
   varying vec3 wp, rp;
   float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
   float noise(vec2 p) {
@@ -102,8 +105,33 @@ const fragmentShader = (patches) => `${heightGlsl(patches)}
     float grain = 0.6 * noise(wp.xz / 50.0) + 0.4 * noise(wp.xz / 7.0);
     c *= mix(0.84 + 0.16 * grain, 0.92, smoothstep(1500.0, 6000.0, dist));
     float light = max(dot(n, sun), 0.0) * 0.85 + 0.35;
+    c *= light;
+    // water: where the ground is flat at a lake's level inside its box. The
+    // survey recorded the lakes full, as flat ground; this paints them.
+    // The height is read from the survey, not taken from the mesh: on the
+    // coarse outer rings the mesh is interpolated between posts that may be
+    // on the land, and a shore would come and go with distance.
+    float water = 0.0;
+    float hs = heightWith(wp.xz, w);
+    for (int i = 0; i < ${lakes}; i++) {
+      vec4 b = lakeBox[i];
+      if (wp.x > b.x && wp.x < b.z && wp.z > b.y && wp.z < b.w) {
+        float dh = abs(hs - lakeLevel[i]);
+        water = max(water, (1.0 - smoothstep(1.0, 2.5, dh)) * (1.0 - smoothstep(0.003, 0.010, slope)));
+      }
+    }
+    if (water > 0.0) {
+      vec2 rip = vec2(noise(wp.xz / 9.0 + 3.0), noise(wp.xz / 9.0 + 11.0)) - 0.5;   // a faint ripple
+      vec3 nw = normalize(vec3(rip.x * 0.06, 1.0, rip.y * 0.06));
+      vec3 v = normalize(-rp);
+      float grazing = pow(1.0 - max(dot(nw, v), 0.0), 3.0);
+      vec3 deep = vec3(0.07, 0.22, 0.30);
+      vec3 cw = mix(deep, fogColor, 0.15 + 0.55 * grazing);                               // the sky in it, more at a low angle
+      cw += vec3(1.0, 0.95, 0.85) * 0.7 * pow(max(dot(nw, normalize(v + sun)), 0.0), 90.0);   // the sun's glint
+      c = mix(c, cw, water);
+    }
     float f = smoothstep(fogNear, fogFar, dist);
-    gl_FragColor = vec4(mix(c * light, fogColor, f), 1.0);
+    gl_FragColor = vec4(mix(c, fogColor, f), 1.0);
   }`;
 
 // One level's grid: (N+1)² vertices in cell units, with the edge attribute,
@@ -154,6 +182,7 @@ function heightTexture(image) {
 export function createTerrain(scene, region, images, world) {
   const { base, atlas } = region;
   const patches = [...region.patches].sort((a, b) => b.post - a.post);   // coarsest first, so the finest ends on top
+  const lakes = region.lakes ?? [];
   const shared = {
     baseMap: { value: heightTexture(images.base) }, atlasMap: { value: heightTexture(images.atlas) },
     baseGrid: { value: new THREE.Vector4(base.x0, base.z0, base.post, base.flat) },
@@ -163,13 +192,14 @@ export function createTerrain(scene, region, images, world) {
     patchRect: { value: patches.map((p) => new THREE.Vector4(p.x0, p.z0, (p.size - 1) * p.post, p.post)) },
     patchPix: { value: patches.map((p) => new THREE.Vector4(p.px, p.py, p.size, 0)) },
     sun: { value: world.sun.clone().normalize() }, fogColor: { value: world.fog.color }, fogNear: { value: world.fog.near }, fogFar: { value: world.fog.far },
+    lakeBox: { value: lakes.map((l) => new THREE.Vector4(l.x0, l.z0, l.x1, l.z1)) }, lakeLevel: { value: lakes.map((l) => l.level) },
   };
   const levels = [];
   for (let l = 0; l < LEVELS; l++) {
     const { geo, variants } = levelGeometry(l > 0);
     const material = new THREE.ShaderMaterial({
       uniforms: { ...shared, rel: { value: new THREE.Vector2() }, spacing: { value: SPACING * 2 ** l } },
-      vertexShader: vertexShader(patches.length), fragmentShader: fragmentShader(patches.length),
+      vertexShader: vertexShader(patches.length), fragmentShader: fragmentShader(patches.length, Math.max(1, lakes.length)),
     });
     const mesh = new THREE.Mesh(geo, material);
     mesh.frustumCulled = false;
