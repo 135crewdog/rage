@@ -209,7 +209,7 @@ async function main() {
     // the HUD: every symbol labelled where the HUD drew it
     await page.evaluate(drawLabels, [
       { text: 'heading, degrees true', x: a.heading.x + 18, y: a.heading.y, lx: a.heading.x + 60, ly: a.heading.y, align: 'left' },
-      { text: 'airspeed, knots', x: a.airspeed.x, y: a.airspeed.y + 10, lx: a.airspeed.x + 46, ly: a.airspeed.y + 56, align: 'right' },
+      { text: 'airspeed, knots', x: a.airspeed.x - 4, y: a.airspeed.y - 12, lx: a.airspeed.x + 46, ly: a.airspeed.y - 40, align: 'right' },
       { text: 'altitude, ft', x: a.altitude.x, y: a.altitude.y + 10, lx: a.altitude.x - 46, ly: a.altitude.y + 56, align: 'left' },
       { text: 'pitch ladder, every 5°', x: a.ladder.x, y: a.ladder.y, lx: a.ladder.x - 24, ly: a.ladder.y, align: 'right' },
       { text: 'horizon', x: a.horizon.x, y: a.horizon.y, lx: a.horizon.x + 14, ly: a.horizon.y, align: 'left' },
