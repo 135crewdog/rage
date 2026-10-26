@@ -1,4 +1,4 @@
-// The screens (start, pause, settings, rotate, motion denied, crashed) and
+// The screens (start, pause, settings, credits, rotate, motion denied, crashed) and
 // the theme. One screen shows at a time; none while flying.
 
 const THEME_KEY = 'rage.theme';
@@ -55,6 +55,8 @@ export function createScreens({ version, onFly, onResume, onRecenter, onFlyAgain
   document.getElementById('crash-again').addEventListener('click', onFlyAgain);
   document.getElementById('settings-open').addEventListener('click', () => { previous = current; show('settings'); });
   document.getElementById('settings-done').addEventListener('click', () => show(previous || 'pause'));
+  document.getElementById('credits-open').addEventListener('click', () => show('credits'));
+  document.getElementById('credits-back').addEventListener('click', () => show('settings'));
   for (const b of document.querySelectorAll('#theme button')) b.addEventListener('click', () => applyTheme(b.dataset.theme));
   for (const b of document.querySelectorAll('#place button')) b.addEventListener('click', () => { applyPlace(b.dataset.place); onPlace(b.dataset.place); });
   for (const b of document.querySelectorAll('.update-btn')) b.addEventListener('click', onUpdate);
