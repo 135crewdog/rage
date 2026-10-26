@@ -46,6 +46,7 @@ manifest.webmanifest
 sw.js                     service worker
 icons/                    app icons
 src/main.js               composition root: wires sim, input, renderer, HUD and UI together
+src/version.js            APP_VERSION, imported by the app and the user guide
 src/places.js             the places to fly and their air starts
 src/sim/                  the simulation: pure JS, no DOM, no three.js, no browser APIs
 src/sim/data/             the F-16 tables as JS modules, re-keyed from docs/f16-data.md
@@ -54,11 +55,13 @@ src/render/               all three.js code: world, terrain, aircraft, plume, ca
 terrain/                  base.png, places.png and region.json (the heightmaps), CREDITS.md, make-heightmap.py (the GeoTIFF conversion)
 src/hud/                  the HUD
 src/ui/                   throttle, stick indicator, pause button, screens, settings
+guide/                    the user guide: index.html, guide.css; img/ is made by tests/browser/guide.js and never checked in
 vendor/three/             three.js r186: build/three.module.js, build/three.core.js, examples/jsm/ (GLTFLoader and its helpers), LICENSE, VERSION
 models/                   f16c.glb, CREDITS.md, cut-surfaces.py (the one-off Blender cut)
 tests/*.test.js           node --test: model, FCS, input maths, frames
 tests/flight/             the flight tests of docs/flight-model.md 12.2 and 12.3
 tests/browser/smoke.js    loads the app in headless Chromium and flies a few seconds of simulated tilt
+tests/browser/guide.js    makes the user guide's pictures from the app and checks the guide reads
 .github/workflows/        test.yml runs every test; pages.yml runs it, then publishes the app
 ```
 
@@ -104,10 +107,12 @@ Screens:
 
 - **Start.** The name, a list of the five places by their full names (remembered as `rage.place`), and one button: **Fly**. Tapping it asks for motion access, keeps the screen awake and starts the flight at the chosen place. Fly again, on the pause and crash screens, comes back here, so the place can be changed between flights. The motion permission request is the first statement in that tap's handler, before anything else, or iOS refuses it.
 - **Pause.** Resume, **Recenter controls**, Fly again (back to the start screen, where a place can be picked before flying), Settings. Recentering confirms itself: the button reads "Recentered" with a tick for a second, and the stick indicator glows once as its cross snaps to centre.
-- **Settings.** Theme: Light, Dark, Auto (Auto follows the phone). A **Send feedback** button that opens an email to 135crewdog.github@gmail.com with the version in the subject (a user guide will join it). A Credits button. The app's version at the bottom. Done.
+- **Settings.** Theme: Light, Dark, Auto (Auto follows the phone). A **User guide** button that opens the guide in the browser. A **Send feedback** button that opens an email to 135crewdog.github@gmail.com with the version in the subject. A Credits button. The app's version at the bottom. Done.
 - **Credits.** Opened from Settings, with Back. Six short entries, each a title and a sentence or two with its links: the flight model (Stevens, Lewis and Johnson's book, from NASA TP-1538), the camera and HUD (vazgriz's series and code, MIT), the terrain (NASA SRTM via OpenTopography, public domain), the jet (Usman Zia, CC BY 4.0), three.js (MIT), and Made by: the GitHub user and Claude Code, never the owner's name.
 - **Rotate your phone.** Shown whenever the phone is in portrait. It also says: if it won't rotate, turn off Portrait Orientation Lock in Control Center.
 - **Motion access denied.** If the permission is refused, say so plainly and how to fix it: close the app completely, open it again, tap Fly and choose Allow. There is no touch-stick fallback (see Parked).
+
+**The user guide** (`guide/`) is a page beside the app at `/rage/guide/`, in the app's stylesheet, that scrolls: install steps for iPhone and Android (Android marked untested), how to hold the phone (a drawn picture with arrows and the rotate screen), the screen and the HUD with every control and symbol labelled, a map of the region with the fine patches outlined, the steerpoint loop, each air start as the icon's F-16 pointed on its heading and the bullseye, what the jet will and won't do with a two-sentence note that the data is subsonic and the drag above Mach 0.85 an approximation, Settings, troubleshooting, and the credits. It imports the app's version, places and theme and pulls the credits from the app's page, so nothing is written twice. Every picture is made from the app by `tests/browser/guide.js` at test and deploy time and never checked in (see Departures).
 
 The UI and every screen follow the owner's Show Time and Apollo apps (https://github.com/135crewdog/showtime): system font, Apple's colours and grays, rounded cards, sentence case, Light, Dark and Auto. The game view itself is dark regardless of theme; the theme applies to the screens and the UI.
 
@@ -135,13 +140,14 @@ These come from research done while preparing the project; `docs/flight-model.md
 
 ## Versioning
 
-One version string, `APP_VERSION` in `src/main.js`, shown in Settings, and the same value as `VERSION` in `sw.js`. Bump both with every change to anything the app serves, or phones keep the old copy.
+One version string, `APP_VERSION` in `src/version.js`, shown in Settings and at the top of the user guide, and the same value as `VERSION` in `sw.js`. Bump both with every change to anything the app serves, or phones keep the old copy.
 
 ## Departures from the owner's design philosophy
 
 - **A full-screen app shell.** The philosophy's working examples are pages that scroll. A flight sim fills the screen and can't scroll; the game view is fixed and sized to the screen.
 - **The HUD ignores the theme.** A real HUD is green, and green reads against both sky and ground. Light and Dark apply to the screens and the UI.
 - **Focused, not broad.** Rage is for an iPhone held in landscape. It doesn't try to work on a tablet or a computer beyond the tests.
+- **The user guide's pictures are made at deploy.** The app has no build step, and still has none. But a guide's pictures go stale the moment the HUD or a screen changes, and screenshots differ byte for byte between machines, so they are not checked in: `tests/browser/guide.js` makes them from the app in CI and the Pages workflow publishes them with the guide.
 
 ## Deliberately not in the game
 
@@ -188,6 +194,8 @@ Agreed after the owner's flights, as follow-ups in the same milestone:
 6. **Credits.** The expanding Credits row in Settings becomes a button opening a Credits screen with Back: the flight model's sources, vazgriz's series, the terrain data, the jet, three.js, and who made it (the GitHub user and Claude Code).
 
 7. **Feedback.** A Send feedback button in Settings that opens an email to 135crewdog.github@gmail.com, the version in the subject. No form, no server: the phone's own Mail app.
+
+8. **User guide.** The page described under UI, with a User guide button in Settings. Its pictures come from the app by script, so they change when the app does; the map comes from the heightmaps and the places file. Agreed: Android steps marked untested; the pictures made at deploy rather than checked in.
 
 The downloads, from OpenTopography as for milestone 2 (the boxes carry a small margin):
 

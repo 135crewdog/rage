@@ -26,6 +26,11 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+      # the user guide's pictures, made from the app by the test job
+      - uses: actions/download-artifact@v4
+        with:
+          name: guide-pictures
+          path: guide/img
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

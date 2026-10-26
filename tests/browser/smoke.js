@@ -6,45 +6,12 @@
 //
 //   node tests/browser/smoke.js [screenshot-dir]
 
-import { createServer } from 'node:http';
-import { readFile, stat } from 'node:fs/promises';
-import { join, extname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { join } from 'node:path';
 import { createRequire } from 'node:module';
 import assert from 'node:assert/strict';
+import { serve, sensor } from './harness.js';
 
 const require = createRequire(import.meta.url);
-const ROOT = resolve(fileURLToPath(new URL('../..', import.meta.url)));
-const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json',
-  '.webmanifest': 'application/manifest+json', '.png': 'image/png', '.svg': 'image/svg+xml', '.glb': 'model/gltf-binary' };
-
-function serve() {
-  const server = createServer(async (req, res) => {
-    try {
-      let path = decodeURIComponent(new URL(req.url, 'http://x').pathname);
-      if (path.endsWith('/')) path += 'index.html';
-      const file = resolve(join(ROOT, path));
-      if (!file.startsWith(ROOT)) { res.writeHead(403); res.end(); return; }
-      await stat(file);
-      res.writeHead(200, { 'content-type': TYPES[extname(file)] || 'application/octet-stream', 'cache-control': 'no-store' });
-      res.end(await readFile(file));
-    } catch {
-      res.writeHead(404); res.end();
-    }
-  });
-  return new Promise((ok) => server.listen(0, '127.0.0.1', () => ok({ server, url: `http://127.0.0.1:${server.address().port}/` })));
-}
-
-// beta and gamma for a phone held in landscape with the given tilt-back angle
-// and steering-wheel turn, assuming screen angle 0 (as headless reports).
-function sensor(back, turn) {
-  // up vector in device axes: start upright (0,1,0), tilt back about x, turn about z
-  const D2R = Math.PI / 180;
-  let [x, y, z] = [0, Math.cos(back * D2R), Math.sin(back * D2R)];
-  const c = Math.cos(turn * D2R), s = Math.sin(turn * D2R);
-  [x, y] = [c * x - s * y, s * x + c * y];
-  return { beta: Math.asin(y) / D2R, gamma: Math.atan2(-x, z) / D2R, alpha: 0 };
-}
 
 async function main() {
   const shots = process.argv[2];
@@ -69,6 +36,7 @@ async function main() {
 
     await page.goto(url + 'index.html?debug=1', { waitUntil: 'load' });
     await page.waitForFunction(() => window.rage && window.rage.version);
+    const version = await page.evaluate(() => window.rage.version);
     assert.equal(await page.evaluate(() => window.rage.mode), 'start');
     assert.equal(await page.evaluate(() => document.getElementById('screen-start').hidden), false);
     await shot('start');
@@ -166,7 +134,8 @@ async function main() {
     assert.equal(await page.evaluate(() => document.documentElement.dataset.theme), 'dark');
     assert.equal(await page.evaluate(() => localStorage.getItem('rage.theme')), 'dark');
     await shot('settings');
-    assert.equal(await page.evaluate(() => document.getElementById('feedback').getAttribute('href')), 'mailto:135crewdog.github@gmail.com?subject=Rage%200.1.21%20feedback', 'feedback opens an email with the version');
+    assert.equal(await page.evaluate(() => document.getElementById('feedback').getAttribute('href')), `mailto:135crewdog.github@gmail.com?subject=Rage%20${version}%20feedback`, 'feedback opens an email with the version');
+    assert.equal(await page.evaluate(() => document.getElementById('guide').getAttribute('href')), './guide/', 'the user guide is a page beside the app');
     // credits: opens from settings, six entries, back returns to settings
     await page.click('#credits-open');
     assert.equal(await page.evaluate(() => document.getElementById('screen-credits').hidden), false, 'credits screen shows');

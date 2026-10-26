@@ -74,6 +74,7 @@ export function apexFor(pitchDeg) {
 export function createHud(canvas) {
   const ctx = canvas.getContext('2d');
   let w = 0, h = 0, dpr = 1;
+  let anchors = {};             // where each item was last drawn, in CSS pixels; the user guide's labelled picture reads it
   let inset = { top: 0, right: 0, bottom: 0, left: 0 };
 
   function resize() {
@@ -135,11 +136,13 @@ export function createHud(canvas) {
     ctx.clearRect(0, 0, w, h);
     const cx = w / 2, cy = h / 2;
     const left = inset.left + 64, right = w - inset.right - 60, top = inset.top + 14, bottom = h - inset.bottom - 18;
+    const at = {};
 
     // heading tape across the top
     const hdg = air.heading;
     stroke(() => { ctx.moveTo(cx, top + 22); ctx.lineTo(cx - 5, top + 30); ctx.lineTo(cx + 5, top + 30); ctx.closePath(); });
     text(String(Math.round(hdg) % 360).padStart(3, '0'), cx, top + 40, 'center', 15);
+    at.heading = { x: cx, y: top + 40 };
     const span = 60, pxDeg = (w * 0.5) / span;
     for (let d = -span / 2; d <= span / 2; d += 5) {
       const deg = Math.round((hdg + d) / 5) * 5;
@@ -184,6 +187,8 @@ export function createHud(canvas) {
         text(String(Math.abs(p)), c.x - ux * (half + 14), c.y - uy * (half + 14), 'center', 12);
         text(String(Math.abs(p)), c.x + ux * (half + 14), c.y + uy * (half + 14), 'center', 12);
       }
+      if (p === 0) at.horizon = { x: c.x + ux * half, y: c.y + uy * half };
+      if (p === 5 || p === 10) at.ladder = { x: c.x - ux * (half + 14), y: c.y - uy * (half + 14) };   // the 10° bar's left number when it shows, else the 5°'s
     }
     // straight up and straight down, once the ladder's window reaches them:
     // conformal like the bars, but upright on the screen rather than rolling
@@ -201,6 +206,7 @@ export function createHud(canvas) {
       stroke(() => {
         ctx.moveTo(nx - 22, ny); ctx.lineTo(nx - 10, ny); ctx.lineTo(nx - 5, ny + 7); ctx.lineTo(nx, ny); ctx.lineTo(nx + 5, ny + 7); ctx.lineTo(nx + 10, ny); ctx.lineTo(nx + 22, ny);
       });
+      at.waterline = { x: nx + 22, y: ny };
     }
 
     // flight path marker: where the jet is actually going. Held at the HUD's
@@ -212,6 +218,7 @@ export function createHud(canvas) {
     if (f.visible && (inFrame || !looking)) {
       const fx = Math.max(left + 30, Math.min(right - 30, f.x)), fy = Math.max(top + 60, Math.min(bottom - 70, f.y));
       fpm = { x: fx, y: fy };
+      at.fpm = { x: fx - 20, y: fy };
       dashed(!inFrame);
       stroke(() => {
         ctx.arc(fx, fy, 7, 0, Math.PI * 2);
@@ -230,14 +237,16 @@ export function createHud(canvas) {
       const steerInFrame = s.visible && s.x >= left + 30 && s.x <= right - 30 && s.y >= top + 60 && s.y <= bottom - 70;
       if (steerInFrame) {
         stroke(() => { ctx.moveTo(s.x, s.y - 9); ctx.lineTo(s.x + 9, s.y); ctx.lineTo(s.x, s.y + 9); ctx.lineTo(s.x - 9, s.y); ctx.closePath(); });
+        at.steerpoint = { x: s.x + 9, y: s.y, kind: 'diamond' };
       } else {
-        const at = fpm ?? { x: cx, y: cy };
-        const u = cueDirection(s, at, relativeBearing(hdg, nav.steer.bearing));
-        const tx = at.x, ty = at.y - 34;
+        const from = fpm ?? { x: cx, y: cy };
+        const u = cueDirection(s, from, relativeBearing(hdg, nav.steer.bearing));
+        const tx = from.x, ty = from.y - 34;
         stroke(() => {
           ctx.moveTo(tx + 5, ty); ctx.arc(tx, ty, 5, 0, Math.PI * 2);
           ctx.moveTo(tx + u.x * 5, ty + u.y * 5); ctx.lineTo(tx + u.x * 18, ty + u.y * 18);
         });
+        at.steerpoint = { x: tx + 5, y: ty, kind: 'tadpole' };
       }
     }
 
@@ -247,6 +256,7 @@ export function createHud(canvas) {
     stroke(() => { ctx.moveTo(right - 46, cy); ctx.lineTo(right - 54, cy - 5); ctx.lineTo(right - 54, cy + 5); ctx.closePath(); });
     const alt = altitudeDisplay(air.altitude, air.ground);
     text((alt.radar ? 'R ' : '') + alt.value, right - 42, cy, 'left', 20);
+    at.airspeed = { x: left + 42, y: cy }; at.altitude = { x: right - 42, y: cy };
 
     // g, AoA, Mach, the engine's power state and the jet's own bullseye
     // position, lower left; the steerpoint's range and name, lower right
@@ -258,8 +268,11 @@ export function createHud(canvas) {
     if (nav) {
       text(`BE ${String(Math.round(nav.bullseye.bearing) % 360).padStart(3, '0')}/${Math.round(nav.bullseye.range)}`, left, bottom, 'left', 14);
       text(`${nav.steer.range.toFixed(1)} > ${nav.steer.name}`, right, bottom, 'right', 14);
+      at.bullseye = { x: left, y: bottom }; at.range = { x: right, y: bottom };
     }
+    at.g = { x: left, y: rows[0] }; at.alpha = { x: left, y: rows[1] }; at.mach = { x: left, y: rows[2] }; at.power = { x: left, y: rows[3] };
+    anchors = at;
   }
 
-  return { resize, draw };
+  return { resize, draw, anchors: () => anchors };
 }
