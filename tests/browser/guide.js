@@ -169,8 +169,7 @@ async function drawHold({ kind, shot }) {
   renderer.setPixelRatio(1); renderer.setSize(W, H, false); renderer.setClearColor(0x000000, 0);
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(24, W / H, 1, 2000);
-  if (kind === 'pitch') camera.position.set(0, 104, 260); else camera.position.set(60, 44, 290);
-  camera.lookAt(0, 8, 0);
+  if (kind === 'pitch') { camera.position.set(0, 104, 260); camera.lookAt(0, 16, 0); } else { camera.position.set(0, 26, 380); camera.lookAt(0, -6, 0); }
   scene.add(new THREE.HemisphereLight(0xffffff, 0x444455, 1.2));
   const key = new THREE.DirectionalLight(0xffffff, 1.5); key.position.set(-80, 120, 160); scene.add(key);
   const rim = new THREE.DirectionalLight(0xffffff, 0.8); rim.position.set(60, 40, -120); scene.add(rim);
@@ -201,20 +200,22 @@ async function drawHold({ kind, shot }) {
     cone.position.copy(end).addScaledVector(tangent, 5);
     cone.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), tangent);
     scene.add(new THREE.Mesh(new THREE.TubeGeometry(curve, 48, 1.7, 12), green), cone);
-    return end.clone().addScaledVector(tangent, 11);   // the tip, for its label
   };
   const D2R = Math.PI / 180;
   const arc = (at, a0, a1, n = 24) => Array.from({ length: n + 1 }, (_, i) => at((a0 + (a1 - a0) * i / n) * D2R));
-  const tips = {};
+  const at = {};   // where each label goes, in the scene
   if (kind === 'pitch') {
-    // round the long axis, over the top edge: toward you (+z) is nose up
+    // round the long axis, over the top edge: toward you (+z) is nose up; the labels above each arc
     const R = 56;
-    tips.up = arrow(arc((t) => new THREE.Vector3(40, R * Math.cos(t), R * Math.sin(t)), -50, 50));
-    tips.down = arrow(arc((t) => new THREE.Vector3(-40, R * Math.cos(t), R * Math.sin(t)), 50, -50));
+    arrow(arc((t) => new THREE.Vector3(40, R * Math.cos(t), R * Math.sin(t)), -50, 50));
+    arrow(arc((t) => new THREE.Vector3(-40, R * Math.cos(t), R * Math.sin(t)), 50, -50));
+    at.up = new THREE.Vector3(40, R, 0); at.down = new THREE.Vector3(-40, R, 0);
   } else {
-    // round the screen's axis: along the top edge left to right is clockwise, roll right; along the bottom right to left, roll left
-    tips.right = arrow(arc((t) => new THREE.Vector3(300 * Math.cos(t), -255 + 300 * Math.sin(t), 0), 101, 79));
-    tips.left = arrow(arc((t) => new THREE.Vector3(300 * Math.cos(t), 255 - 300 * Math.sin(t), 0), 79, 101));
+    // round the screen's own axis, beside each end of the phone and clear of it: down the right side is clockwise, roll right; down the left, roll left
+    const R = 94;
+    arrow(arc((t) => new THREE.Vector3(R * Math.cos(t), R * Math.sin(t), 0), 42, -42));
+    arrow(arc((t) => new THREE.Vector3(R * Math.cos(t), R * Math.sin(t), 0), 138, 222));
+    at.right = new THREE.Vector3(R * Math.cos(-42 * D2R), R * Math.sin(-42 * D2R), 0); at.left = new THREE.Vector3(R * Math.cos(222 * D2R), R * Math.sin(222 * D2R), 0);
   }
   renderer.render(scene, camera);
   const out = document.createElement('canvas'); out.width = W; out.height = H;
@@ -223,18 +224,16 @@ async function drawHold({ kind, shot }) {
   const project = (v) => { const p = v.clone().project(camera); return { x: (p.x + 1) / 2 * W, y: (1 - p.y) / 2 * H }; };
   ctx.font = '600 34px -apple-system, BlinkMacSystemFont, system-ui, sans-serif'; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
   const label = (text, v, dx, dy, align) => {
-    const a = project(v), lx = a.x + dx, ly = a.y + dy;
+    const a = project(v);
     ctx.textAlign = align;
-    const ex = align === 'left' ? lx - 12 : lx + 12;
-    for (const [w, c] of [[9, 'rgba(0,0,0,0.6)'], [3.5, '#fff']]) { ctx.lineWidth = w; ctx.strokeStyle = c; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(ex, ly); ctx.stroke(); }
-    ctx.lineWidth = 9; ctx.strokeStyle = 'rgba(0,0,0,0.7)'; ctx.strokeText(text, lx, ly); ctx.fillStyle = '#fff'; ctx.fillText(text, lx, ly);
+    ctx.lineWidth = 9; ctx.strokeStyle = 'rgba(0,0,0,0.7)'; ctx.strokeText(text, a.x + dx, a.y + dy); ctx.fillStyle = '#fff'; ctx.fillText(text, a.x + dx, a.y + dy);
   };
   if (kind === 'pitch') {
-    label('toward you: nose up', tips.up, -40, 330, 'right');
-    label('away: nose down', tips.down, 50, -40, 'left');
+    label('toward you: nose up', at.up, 0, -48, 'center');
+    label('away: nose down', at.down, 0, -48, 'center');
   } else {
-    label('clockwise: roll right', tips.right, -40, -70, 'right');
-    label('anticlockwise: roll left', tips.left, 40, 70, 'left');
+    label('roll right', at.right, 0, 64, 'center');
+    label('roll left', at.left, 0, 64, 'center');
   }
   return out.toDataURL('image/png');
 }
