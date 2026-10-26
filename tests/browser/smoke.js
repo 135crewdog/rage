@@ -40,6 +40,11 @@ async function main() {
     assert.equal(await page.evaluate(() => window.rage.mode), 'start');
     assert.equal(await page.evaluate(() => document.getElementById('screen-start').hidden), false);
     await shot('start');
+    // Settings opens from the start screen too, and Done comes back to it
+    await page.click('#settings-start');
+    assert.equal(await page.evaluate(() => document.getElementById('screen-settings').hidden), false, 'settings from the start screen');
+    await page.click('#settings-done');
+    assert.equal(await page.evaluate(() => document.getElementById('screen-start').hidden), false, 'done returns to the start screen');
 
     // choose a place, then tap Fly: no permission prompt in Chromium, so flight starts at once
     await page.waitForFunction(() => !document.getElementById('fly').disabled);
