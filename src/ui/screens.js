@@ -60,6 +60,7 @@ export function createScreens({ version, onFly, onResume, onRecenter, onFlyAgain
   const guide = document.getElementById('guide');
   const guideOnline = () => guide.classList.toggle('offline', typeof navigator !== 'undefined' && navigator.onLine === false);
   guideOnline();
+  guide.addEventListener('click', (e) => { if (navigator.onLine === false) e.preventDefault(); });   // the keyboard, too: a dimmed link must not navigate
   window.addEventListener('online', guideOnline); window.addEventListener('offline', guideOnline);
   document.getElementById('settings-done').addEventListener('click', () => show(previous || 'pause'));
   document.getElementById('credits-open').addEventListener('click', () => show('credits'));
