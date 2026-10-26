@@ -219,4 +219,5 @@ Discussed, not adopted, might come back. Ask before building.
 - **Sound, a bandit to dogfight.** Milestones 4 and 5.
 - **Takeoff and landing**, with the FCS's gear-down laws.
 - **NASA's high-fidelity data**, which would allow leading-edge flaps, departures and the deep stall.
+- **A KC-135R**, flown as its own aircraft or as a tanker for the F-16 to refuel from. Sources and the owner's decisions are in `docs/kc135-sources.md`. Never use USAF flight-manual or performance-manual data, even second-hand, and nothing marked as an owner decision there without the owner's explicit permission.
 - **A heavier, more powerful F-16C** (real half-fuel weight with an F110-GE-129 engine). The book's lighter jet with its weaker engine already turns like a real one; changing one without the other would break that.

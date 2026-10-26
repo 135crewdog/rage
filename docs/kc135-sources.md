@@ -11,7 +11,7 @@ Never use data from official US Air Force flight manuals or performance manuals 
 How the searches applied it:
 
 - No flight manual, performance manual or checklist was opened. None turned up directly.
-- Public-release reports that **cite** a T.O. for a value: that value is excluded, the rest of the report is judged on its own.
+- Public-release reports that **cite** a T.O. for a value: that value is excluded, the rest of the report is judged on its own. A report is dropped whole when its T.O.-sourced material is its substance, or nothing else in it is useful.
 - Pilot commentary and forums, where the Dash-1 is often quoted: excluded unopened.
 - Proprietary manufacturer manuals on sharing sites (Boeing, CFM): excluded unopened.
 - DTIC documents without a clear Distribution A statement: excluded.
@@ -27,7 +27,7 @@ A credible KC-135R model can be built without any flight manual, but it will be 
 - **The engine is well covered.** The KC-135R's F108 is the CFM56-2B, rated in the European type certificate. A published open thrust-lapse model, international emissions-databank fuel flows and NASA big-fan transient data finish it.
 - **Most aerodynamic data is plotted, not tabulated.** It has to be digitised from figures, which costs time and adds error.
 - **The biggest gaps** are elevator, aileron and spoiler effectiveness, all rate derivatives, transonic tail and trim, KC-135R-specific effects (CFM56 nacelles, larger stabiliser), and mass properties for the R. One thesis would fill most of them (Owner decision 1). Otherwise they're estimated with the Air Force's public DATCOM handbook or a vortex-lattice code and checked against the tail-on low-speed tunnel data.
-- **It will fly like a conventional jet**, not fly-by-wire: tab-driven manual surfaces with a boosted rudder, a moving stabiliser trimmed by hand, a yaw damper, and a lightly damped Dutch roll without it. The public flight-test data gives the Dutch roll's damping and period as a validation target.
+- **It will fly like a conventional jet**, not fly-by-wire: tab-driven manual surfaces with a boosted rudder, a moving stabiliser trimmed by hand, a yaw damper, and a lightly damped Dutch roll without it. Shell 77 (G2) gives a flight-measured Dutch roll period; bare-airframe damping comes only from Crenshaw (Decision 1), or approximately from the Dash 80 (R2, R3).
 - **Air refuelling is feasible.** The boom is well documented in Air Force research, and a tanker-wake model validated against a Learjet flown behind a real KC-135 exists. A boom envelope with clean provenance does not (Owner decision 5).
 
 ## 2. Airframe aerodynamics (KC-135A family)
@@ -39,7 +39,7 @@ A credible KC-135R model can be built without any flight manual, but it will be 
 | A3 | **AFFDL-TR-77-23** (Boeing D6-45090, Ishimitsu & Zanton, 1977). Design and Analysis of Winglets for Military Aircraft, Phase II. https://apps.dtic.mil/sti/tr/pdf/ADA046152.pdf | Full-scale KC-135A geometry table (wing, both tails, chords, sweep, dihedral, incidence, stabiliser travel). Trimmed low-speed polars to CLmax at flaps 30° and 50°. Mach 0.50–0.95 wing-body data: drag rise, drag-divergence boundary, buffet onset, Mach tuck, sideslip derivatives (no tail). "Approved for public release; distribution unlimited." Two items in it come from Boeing's flight-manual substantiation report (Owner decision 2); the rest is wind-tunnel test data. | Usable, minus decision 2 |
 | A4 | **NASA TM-85920** (Curry & Bowers, 1985). Ground-effect analysis of a jet transport. https://ntrs.nasa.gov/api/citations/19850007378/downloads/19850007378.pdf | Flight-measured ground effect for the KC-135 and the Boeing 720, which it calls "nearly identical"; a recommended ground-effect model. Plots. "Unclassified-Unlimited"; public domain. | Usable |
 | A5 | **Montoya, KC-135 Winglet Flight Results** (NASA Dryden, c. 1980). https://ntrs.nasa.gov/api/citations/19810010485/downloads/19810010485.pdf | Full-scale **flight** lift-drag polar at Mach 0.78 and a buffet boundary. Plots. No statement in the copy read; NTRS record still to confirm. | Usable once the NTRS record is confirmed |
-| A6 | **NASA CP-2211**, KC-135 Winglet Program Review (1982). https://ntrs.nasa.gov/citations/19840019618 | Flight lift and drag at Mach 0.70–0.80 (Lux paper), buffet boundaries (Dodson), fuel mileage, loads, flutter. The Lux and Dodson papers weren't reached by the text tool and need reading by hand. NTRS: "Public Use Permitted". | Usable |
+| A6 | **NASA CP-2211**, KC-135 Winglet Program Review (1982). https://ntrs.nasa.gov/citations/19840019618 | Flight lift and drag at Mach 0.70–0.80 (Lux paper), buffet boundaries (Dodson), fuel mileage, loads, flutter. The Lux and Dodson papers weren't reached by the text tool and need reading by hand. Dodson's abstract says "baseline buffet boundaries matched earlier data": identify that earlier data, and if it's D6-5599 or the flight manual, exclude that curve (as Decision 2). NTRS: "Public Use Permitted". | Usable |
 | A7 | **NASA TP-1163**, Winglets V (Jacobs, 1978). https://ntrs.nasa.gov/api/citations/19780012138/downloads/19780012138.pdf | Mach 0.50–0.95 wing-body lateral-directional derivatives (no tail). The author warns its **drag data are not representative**. "Unclassified - Unlimited". | Usable, not for drag |
 | A8 | **NASA TN D-8473**, Winglets I (Jacobs, Flechner, Montoya, 1977). https://ntrs.nasa.gov/api/citations/19780012121/downloads/19780012121.pdf | Semispan KC-135A at Mach 0.30–0.80: wing-body CL-α and Cm through cruise Mach. "Unclassified - Unlimited". | Usable |
 | A9 | Pressure and load parts: **TN D-8474** (II), **TN D-8478** (III, not opened), **TM-78786**, **TP-2619** (VII), **TN D-8260**. URLs in the research notes. | Pressures and span loads, and the wing's planform, thickness and twist. For checking a vortex-lattice model and setting the wake's span loading. | Usable |
@@ -63,9 +63,9 @@ A credible KC-135R model can be built without any flight manual, but it will be 
 
 | # | Source | What it gives | Status |
 |---|---|---|---|
-| E1 | **EASA type certificate data sheet E.066**, CFM56-2 and -3, Issue 02 (2023). https://www.easa.europa.eu/fr/downloads/7691/en | The CFM56-2B (KC-135R): take-off 9,786 daN (22,000 lbf) and maximum continuous 9,599 daN, sea-level static; weight, rotor-speed and temperature limits; hydromechanical control; **no thrust reverser** in its type design. Published openly by the regulator. | Usable |
-| E2 | **ICAO Aircraft Engine Emissions Databank**, via the OpenAP open-source package. https://www.easa.europa.eu/en/domains/environment/icao-aircraft-engine-emissions-databank | Bypass ratio 6.0, pressure ratio 23.5, fuel flow at 100/85/30/7% thrust. Verify against the official spreadsheet. | Usable |
-| E3 | **Bartel & Young** (J. Aircraft, 2008) thrust-lapse equations, with constants printed in the open **OpenAP paper** (Sun et al., *Aerospace*, 2020, CC BY). https://www.mdpi.com/2226-4310/7/8/104 | The recommended thrust model: take-off thrust with Mach and altitude, three-segment climb model. Needs a cruise reference thrust; estimates agree on 4,600–5,000 lbf at about 35,000 ft, Mach 0.8, but no primary figure exists. | Usable |
+| E1 | **EASA type certificate data sheet E.066**, CFM56-2 and -3, Issue 02 (2023). https://www.easa.europa.eu/fr/downloads/7691/en | The CFM56-2B (KC-135R): take-off 9,786 daN (22,000 lbf) and maximum continuous 9,599 daN, sea-level static; weight, rotor-speed and temperature limits; hydromechanical control; **no thrust reverser** in its type design. Published openly by the regulator; EASA copyright, so use the ratings as facts and don't copy the document. | Usable |
+| E2 | **ICAO Aircraft Engine Emissions Databank**, via the OpenAP open-source package. https://www.easa.europa.eu/en/domains/environment/icao-aircraft-engine-emissions-databank | Bypass ratio 6.0, pressure ratio 23.5, fuel flow at 100/85/30/7% thrust. **Re-key from the official ICAO/EASA spreadsheet**; OpenAP's `engines.csv` is GPL-3, a cross-check only, never copied. | Usable |
+| E3 | **Bartel & Young** (J. Aircraft, 2008) thrust-lapse equations, with constants printed in the open **OpenAP paper** (Sun et al., *Aerospace*, 2020, CC BY). https://www.mdpi.com/2226-4310/7/8/104 | The recommended thrust model: take-off thrust with Mach and altitude, three-segment climb model. Needs a cruise reference thrust: OpenAP's default formula and the OpenConcept deck (E4) both give about 4,600 lbf at about 35,000 ft, Mach 0.8, but no primary figure exists. | Usable |
 | E4 | **OpenConcept CFM56 deck** (MIT licence). https://github.com/mdolab/openconcept | A generic CFM56-7B-class engine table, for cross-checking lapse shape and cruise fuel flow. Some bad cells. | Usable, cross-check |
 | E5 | **14 CFR 33.73 and 25.119**; **NASA TP-97-206217** (MD-11 engines-only flight control); **NASA TM-2009-215668** and **TM-2010-216810** (C-MAPSS). | Spool-up: a high-bypass engine is slow near idle, about a 1 s time constant above 20% thrust; flight idle to 95% thrust within 5 s is the certification ceiling. | Usable |
 | E6 | **USAF fact sheet**: "21,634 pounds each engine". | Matches neither certified rating; unexplained. Note it, use E1. | Usable, noted |
@@ -77,32 +77,34 @@ A credible KC-135R model can be built without any flight manual, but it will be 
 | G1 | A3's geometry table, cross-checked by A4, R4 and A9. | Wing, tails, chords, sweep, dihedral, incidence, stabiliser travel (one value is unclear in the scan). | Usable |
 | G2 | **USAF Accident Investigation Board report, KC-135R 63-8877 (Shell 77), 2013**, a publicly releasable report. Mirror: https://code7700.com/pdfs/usaf/usaf_aib_050313_kc135_manas.pdf; official copy in the Air Force FOIA Reading Room. | The board's own flight-data findings: Dutch roll period about 5 s, ±3° yaw, ±5° bank, autopilot interaction, rudder power unit and series yaw damper exist. **Every passage the report cites to the flight manual is excluded.** | Usable, board findings only |
 | G3 | **FAA airworthiness directives** 64-10-02, 65-13-01, 80-07-02 (707/720). | Stabiliser trim green band, electrical limit and actuator brake; rudder power unit tests. Existence and behaviour, not numbers. | Usable |
-| G4 | **NASA TM-2005-213162** and Williams 1988 (NASA zero-g operations). | Parabola profile: a good check case for pitch control and energy. | Usable |
+| G4 | **NASA TM-2005-213162** and Williams 1988 (NASA zero-g operations). | Parabola duration (20–25 s), g levels and count: a check case for pitch control and energy. The entry and pull-up profile is only on uncited student pages (University of Washington, Purdue), so it's secondary. | Usable (profile secondary) |
 | G5 | **AFIT thesis, J. Smith 2007** (public release). https://scholar.afit.edu/cgi/viewcontent.cgi?article=3971&context=etd | A 1998 Air Force flight-test trim point (about 240,000 lb, 21,000 ft, 622 ft/s, 2.5° pitch). | Usable |
-| G6 | Crenshaw 1976 thesis: inertias, flight-test derivatives, modes. | The only public KC-135 inertias and full derivative set. | Decision 1 |
+| G6 | Crenshaw 1976 thesis (and Mortensen 1997, which repeats its cruise condition and inertias): inertias, flight-test derivatives, modes. | The only public KC-135 inertias and full derivative set. | Decision 1 |
 
 ## 6. Air refuelling
 
 | # | Source | What it gives | Status |
 |---|---|---|---|
 | F1 | **Smith & Kunz 2006**, AFRL-VA-WP-TP-2006-342. https://apps.dtic.mil/sti/pdfs/ADA464364.pdf | Boom geometry, ruddevators, weight breakdown, multibody equations. "Approved for public release". | Usable |
-| F2 | **Mortensen 1997**, AFIT/GE/ENY/97S-01. https://apps.dtic.mil/sti/pdfs/ADA329325.pdf | Boom weights itemised, ruddevator aero, tube stiffness, a linear KC-135R model at Crenshaw's cruise condition. Its envelope table is Decision 5. | Usable, minus decision 5 |
+| F2 | **Mortensen 1997**, AFIT/GE/ENY/97S-01. https://apps.dtic.mil/sti/pdfs/ADA329325.pdf | Boom weights itemised, ruddevator aero, tube stiffness. Its tanker condition, inertias and linear KC-135R model repeat Crenshaw's and are "as verified by personnel at Boeing", so they follow Decision 1. Its envelope table is Decision 5. | Usable for the boom only |
 | F3 | **J. Smith 2007** (G5). | Tanker-boom coupling, trim results. | Usable |
-| F4 | **Bihrle 2002**, AFRL-VA-WP-TR-2006-3170. https://apps.dtic.mil/sti/pdfs/ADA459237.pdf | Measured 1/13-scale KC-135 wake and its effect on a receiver; contour plots. | Usable |
-| F5 | **Dogan, Sato & Blake 2005**, AIAA 2005-6264 (DTIC copy, public release). https://apps.dtic.mil/sti/pdfs/ADA445129.pdf; **Waishek 2007** and **Lewis 2008** UT Arlington theses (CC BY-NC-SA). | The practical wake model: wing and tail horseshoe vortices averaged into a wind and wind gradient at the receiver. Lewis validates it against a Learjet behind a KC-135 (about 3–4 m/s downwash at contact). The equations themselves are in papers not yet opened. | Usable |
+| F4 | **Bihrle 2002**, AFRL-VA-WP-TR-2006-3170. https://apps.dtic.mil/sti/pdfs/ADA459237.pdf | Measured 1/13-scale KC-135 wake and its effect on a receiver; contour plots. Its "mean refuelling condition" and stabiliser limits are uncited; don't take them into a data file. | Usable (wake data) |
+| F5 | **Dogan, Sato & Blake 2005**, AIAA 2005-6264 (DTIC copy, public release). https://apps.dtic.mil/sti/pdfs/ADA445129.pdf; **Waishek 2007** and **Lewis 2008** UT Arlington theses (CC BY-NC-SA). | The practical wake model: wing and tail horseshoe vortices averaged into a wind and wind gradient at the receiver. Lewis validates it against a Learjet behind a KC-135 (about 3–4 m/s downwash at contact). The equations themselves are in papers not yet opened. Dogan 2005 is the author's copyright, published by AIAA: use facts and method, don't copy text or figures. Waishek's PDF says "All Rights Reserved" while its repository record says CC BY-NC-SA 4.0. | Usable (facts and method) |
 | F6 | **Devuono 2007**, AFIT (public release). https://scholar.afit.edu/cgi/viewcontent.cgi?article=3982&context=etd | AFRL vortex-lattice KC-135 flowfield as a grid. | Usable |
-| F7 | Contact position, about 83 ft aft and 21 ft below the tanker CG (Dogan 2005, Waishek 2007, Mortensen 1997, consistent with each other). | A research definition, not from a T.O. | Usable |
+| F7 | Contact position, about 83 ft aft and 21 ft below the tanker CG (Dogan 2005, Waishek 2007, Mortensen 1997, consistent with each other). | Uncited in Dogan and Waishek; Mortensen agrees. Not traced to a T.O., but the original source is unknown. | Usable, origin unknown |
 | F8 | ARSAG documents and the NATO refuelling standard. | Boom envelope. | Decision 4 |
+| F9 | **Hoganson 1983**, AFIT (public release). https://apps.dtic.mil/sti/pdfs/ADA136895.pdf | Its Weissinger and vortex-lattice interference method only (KC-10/B-52 data). | Usable (method only) |
 
 ## 7. Owner decisions
 
 None of these is used until the owner says so. Recommendations in brackets.
 
-1. **Crenshaw thesis**, AFIT GAE/MC/76D-5, 1976. https://apps.dtic.mil/sti/pdfs/ADA034940.pdf. "Approved for public release; distribution unlimited." It holds the only public KC-135 inertias and full derivative set, flight test and Boeing's analysis code, at cruise, climb and approach, plus mode data. Its stall speed and minimum control speed cite references with flight-manual-style page numbers; those two values are struck out regardless. Its inertias and flight-test derivatives come from "a Boeing document on -135 series aircraft", unidentified because the bibliography wasn't readable. *[Read its bibliography from the scan first. If that Boeing document isn't a flight manual or its substantiation report, use the thesis minus the two struck values.]*
+1. **Crenshaw thesis**, AFIT GAE/MC/76D-5, 1976. https://apps.dtic.mil/sti/pdfs/ADA034940.pdf. "Approved for public release; distribution unlimited." It holds the only public KC-135 inertias and full derivative set, flight test and Boeing's analysis code, at cruise, climb and approach, plus mode data. Its stall speed and minimum control speed cite references with flight-manual-style page numbers; those two values are struck out regardless. Its inertias and flight-test derivatives come from "a Boeing document on -135 series aircraft", unidentified because the bibliography wasn't readable (two separate attempts couldn't reach it). Mortensen 1997 (F2) repeats its cruise condition and inertias, and Locken 1983 (excluded) has derivatives from an equally unidentified reference; they stand or fall together. *[Read its bibliography from the scan first. If that Boeing document isn't a flight manual or its substantiation report, use the thesis minus the two struck values.]*
 2. **AFFDL-TR-77-23's two items from Boeing D6-5599**, "Substantiation Data Report for the KC-135A Flight Manual": take-off, touchdown and buffet lift coefficients by flap setting, and a full-scale drag figure. Boeing's engineering backup for the flight manual, not the manual itself. *[Don't use. The wind-tunnel data cover the same ground.]*
 3. **NASA CR-66125 and CR-66126** (Boeing, Dash 80). Covers say "see limitations sheet", the sheet is missing, NTRS marks them public. *[Don't use unless R2 and R3 prove insufficient; they're Dash 80 approach data only.]*
 4. **ARSAG boom-receptacle documents** AD1053142, AD1090244, AD1048313. Distribution A on the first and last (the second's statement needs checking by eye), but written as text for NATO's refuelling standards. Also **NATO ATP-3.3.4.2 / 3.3.4.5**, not opened. *[Leave until the refuelling milestone; decide then.]*
 5. **Mortensen's envelope table**, credited to an unidentified "Philips", matching the generic NATO envelope. *[Same as 4.]*
+6. **Root sources nobody has checked.** Nothing suggests these are manuals, but their origins are unseen: the boom geometry and weights in F1 and F2 all come from Campbell et al. 1989, an AFIT team thesis not located; Mortensen's boom rest angle came from "Boeing personnel"; J. Smith's 1998 trim point (G5) has a bare citation; the AFRL "high-fidelity Boeing KC-135 model" behind J. Smith has no stated source. *[Use them, and look for Campbell 1989 before the refuelling milestone.]*
 
 ## 8. Excluded
 
@@ -117,7 +119,7 @@ None of these is used until the owner says so. Recommendations in brackets.
 | Shell 77 report passages cited to the inflight manual | Second-hand T.O. content. |
 | Code7700 case study and 1980 KC-135A take-off data page; forum threads | Pilot commentary that quotes, or is built from, the Dash-1. Not opened. |
 | Scribd and similar copies of manuals, CFM operating instructions, copyrighted books | Proprietary or copyrighted; not opened. |
-| AFFDL-TR-78-124 (ADA068324) | Couldn't be read; distribution unknown. |
+| AFFDL-TR-78-124 (ADA068324) | Couldn't be read twice; distribution unknown. Worth another try: it may be a useful KC-135 winglet report. |
 
 ## 9. Gaps, and how they'd be filled
 
@@ -127,13 +129,21 @@ None of these is used until the owner says so. Recommendations in brackets.
 | All rate derivatives (Cmq, Clp, Cnr …) | Decision 1, or DATCOM/strip theory; R2 for approach. |
 | Transonic tail, trim and Mach trim | Estimate; check against A5/A6 cruise polars. |
 | KC-135R changes: CFM56 nacelles, larger stabiliser, inertia | Estimate from geometry; document as approximations. |
-| Control-surface sizes and travel limits; stabiliser trim rate | Not public. Estimate from three-views and generic transport ratios; the owner's judgement tunes the feel, without numbers from the Dash-1. |
+| Control-surface sizes; elevator, aileron, rudder and spoiler travel; stabiliser trim rate (stabiliser travel is in A3, one value to check on the scan) | Not public. Estimate from three-views and generic transport ratios; the owner's judgement tunes the feel, without numbers from the Dash-1. |
 | Stall and post-stall beyond α 20° | Not public. Stall behaviour gets a documented, conservative model. |
 | CG limits, takeoff, approach and stall speeds, Vmca | Not public outside T.O.s. Use 720/707 FAA values for comparison only. |
 | Cruise thrust and flat-rating temperature of the CFM56-2B | Use the E3 estimates, stated as such. |
 | Boom envelope | Decisions 4 and 5. |
 
-## 10. Next steps
+## 10. Licences, when numbers are re-keyed into this public repo
+
+- NASA, AFIT and AFRL reports, FAA and USAF documents: US Government works; numbers free to use, with a citation.
+- AIAA, ICAS, Boeing, EASA documents: numbers are facts, usable with a citation; don't copy figures or text.
+- OpenAP data (GPL-3): re-key from the ICAO original instead. OpenAP's paper (CC BY 3.0): attribute it.
+- OpenConcept (MIT): copying its table needs the licence notice.
+- Waishek and Lewis theses (CC BY-NC-SA): equations are fine; adapted tables or figures would carry ShareAlike and NonCommercial terms.
+
+## 11. Next steps
 
 The research sandbox couldn't download PDFs, so every report was read through a text-extraction tool that sees poor scan text and stops after about 100 pages. Before anything goes into a data file:
 
