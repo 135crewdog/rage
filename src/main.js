@@ -19,8 +19,8 @@ import { createThrottle } from './ui/throttle.js';
 import { createStickIndicator } from './ui/stick.js';
 import { createScreens, loadPlace } from './ui/screens.js';
 import { upInScreen, tiltOf, stickFrom, smooth, MAPPING } from './input/tilt.js';
+import { APP_VERSION } from './version.js';
 
-export const APP_VERSION = '0.1.21';   // the same value as VERSION in sw.js
 const AIR_START = { h: 5000, kcas: 350 };   // h is above the ground at the chosen place once the terrain is known
 const DEBUG = new URLSearchParams(location.search).get('debug') === '1';
 
@@ -401,4 +401,5 @@ window.rage = {
   set throttle(v) { throttleValue = v; throttle.set(v); },
   get neutral() { return neutral; },
   get draws() { return renderer.info.render.calls; },
+  get hud() { return hud.anchors(); },   // where the HUD last drew each item, for the user guide's labelled picture
 };

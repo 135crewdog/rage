@@ -50,6 +50,15 @@ node tests/browser/smoke.js            # pass a folder to save screenshots: node
 
 CI runs it on every push. Nothing replaces the phone: headless Chromium is not iOS.
 
+## The user guide
+
+`guide/index.html` is the user guide, a page beside the app at `/rage/guide/`, opened by the User guide button in Settings. It imports the app's version, places and theme, and pulls the credits from the app's own page, so none of those is written twice. Its pictures are made from the app by `tests/browser/guide.js`, which flies the air start in headless Chromium and writes the labelled HUD and screen, the start, rotate and Settings screens, and a map drawn from the heightmaps and the places into `guide/img/` (ignored by git). CI runs it on every push and the Pages workflow publishes what it made, so the pictures always show the current app. To see the guide locally:
+
+```
+node tests/browser/guide.js
+node tests/browser/smoke.js          # or any static server; then open /guide/
+```
+
 ## Running the app
 
 The app is static files. Serve the repo root over HTTP and open `index.html`; the smoke test's server does exactly that, or use any static server. Tilt controls need a phone over HTTPS, so for real flying use the Pages site: `https://135crewdog.github.io/rage/`.
@@ -60,11 +69,11 @@ Add `?debug=1` to the URL and a small panel shows the raw sensor angles (β, γ,
 
 ## Deploying
 
-`.github/workflows/pages.yml` runs the tests and the smoke test, then publishes the repo root to GitHub Pages on every push to `main`. One-time setup: in the repository's Settings, under Pages, set the build source to GitHub Actions.
+`.github/workflows/pages.yml` runs the tests, the smoke test and the guide's picture script, then publishes the repo root with those pictures to GitHub Pages on every push to `main`. One-time setup: in the repository's Settings, under Pages, set the build source to GitHub Actions.
 
 ## Version bumps
 
-One version string lives in two places: `APP_VERSION` in `src/main.js` (shown in Settings) and `VERSION` in `sw.js` (the cache name). Bump both with every change to anything the app serves, or phones keep the old copy. Add any new file the app loads to the list in `sw.js`. The service worker never updates itself mid-flight: a new version is offered on the start and pause screens.
+One version string lives in two places: `APP_VERSION` in `src/version.js` (shown in Settings and in the user guide) and `VERSION` in `sw.js` (the cache name). Bump both with every change to anything the app serves, or phones keep the old copy. Add any new file the app loads to the list in `sw.js`. The service worker never updates itself mid-flight: a new version is offered on the start and pause screens.
 
 ## Icons
 

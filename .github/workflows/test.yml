@@ -26,9 +26,15 @@ jobs:
       - run: npm install --no-save playwright@1.63.0
       - run: npx playwright install --with-deps chromium
       - run: node tests/browser/smoke.js shots
+      # the user guide's pictures, made from the app; the Pages workflow publishes them
+      - run: node tests/browser/guide.js
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: screenshots
           path: shots
           if-no-files-found: ignore
+      - uses: actions/upload-artifact@v4
+        with:
+          name: guide-pictures
+          path: guide/img

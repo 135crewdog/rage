@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Rage user guide</title>
+  <meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+  <link rel="icon" href="../icons/icon-32.png">
+  <link rel="stylesheet" href="../style.css">
+  <link rel="stylesheet" href="./guide.css">
+</head>
+<body>
+  <div class="page">
+    <h1>Rage</h1>
+    <p class="sub">User guide · version <span id="version"></span></p>
+
+    <section class="card">
+      <h2>Install it</h2>
+      <h3>iPhone</h3>
+      <ol>
+        <li>Open <a href="../">135crewdog.github.io/rage</a> in Safari.</li>
+        <li>Tap Share, then Add to Home Screen, then Add.</li>
+        <li>Open Rage from the home screen. That is what makes it full screen and lets it work without a signal.</li>
+        <li>Turn the phone to landscape and tap Fly. When it asks to use motion, tap Allow. It asks on every cold launch.</li>
+      </ol>
+      <h3>Android</h3>
+      <ol>
+        <li>Open the same address in Chrome.</li>
+        <li>Tap the menu, then Add to Home screen or Install app, then Add.</li>
+        <li>Open Rage from the home screen, turn the phone to landscape and tap Fly. Chrome doesn’t ask about motion. If the jet ignores your tilt, allow motion sensors for the site in Chrome’s settings, under Site settings.</li>
+      </ol>
+      <p>Rage is built for the iPhone and has only been flown on one. It is untested on Android.</p>
+    </section>
+
+    <section class="card">
+      <h2>Hold the phone</h2>
+      <p>Landscape, in both hands, like a steering wheel. The phone is the stick.</p>
+      <figure class="hold">
+        <svg viewBox="0 0 640 230" role="img" aria-label="A phone held in landscape, seen edge-on on the left with arrows for pitch, and face-on on the right with arrows for roll">
+          <defs>
+            <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="#7cff4f"/>
+            </marker>
+          </defs>
+          <g fill="none" stroke="currentColor" stroke-width="2">
+            <!-- edge-on: the phone is a slab, you are to the right of it -->
+            <rect x="150" y="60" width="14" height="110" rx="4"/>
+            <path d="M157,175 v30" stroke-dasharray="4 4"/>
+            <!-- face-on -->
+            <rect x="380" y="55" width="220" height="110" rx="14"/>
+            <rect x="394" y="64" width="192" height="92" rx="6" opacity="0.5"/>
+          </g>
+          <g fill="none" stroke="#7cff4f" stroke-width="3" marker-end="url(#arrow)">
+            <path d="M160,52 q25,-16 60,-6"/>
+            <path d="M160,178 q25,16 60,6"/>
+            <path d="M372,110 a118,118 0 0 1 24,-40"/>
+            <path d="M608,110 a118,118 0 0 0 -24,-40"/>
+          </g>
+          <g fill="currentColor" font-size="14" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif">
+            <text x="157" y="42" text-anchor="middle" font-size="12" fill="currentColor" opacity="0.7">top edge</text>
+            <text x="230" y="48">away: nose down</text>
+            <text x="230" y="194">toward you: nose up</text>
+            <text x="200" y="222" text-anchor="middle" font-size="12" opacity="0.7">seen from the end, you to the right</text>
+            <text x="490" y="40" text-anchor="middle">turn like a wheel: roll</text>
+            <text x="490" y="194" text-anchor="middle" font-size="12" opacity="0.7">seen from the front</text>
+          </g>
+        </svg>
+      </figure>
+      <ul>
+        <li>Tilt the top edge away from you and the nose goes down. Tilt it toward you and the nose comes up.</li>
+        <li>Turn it like a wheel and the jet rolls that way.</li>
+        <li>Hold it still and the jet holds what it has. How far you tilt is how hard you pull, up to what the jet’s own flight control system allows.</li>
+      </ul>
+      <p>The angle you hold the phone at when you tap Fly becomes neutral. If neutral drifts, pause and tap Recenter controls. The small cross in the bottom right shows where your tilt is; it turns orange when you ask for more than the jet will give, and goes dashed when the controls need recentering.</p>
+      <p>In portrait you see this. If the phone won’t rotate, turn off Portrait Orientation Lock in Control Center.</p>
+      <figure class="portrait"><img src="./img/rotate.png" alt="The rotate-your-phone screen"></figure>
+    </section>
+
+    <section class="card">
+      <h2>The screen</h2>
+      <figure class="wide"><img src="./img/screen.png" alt="The flight view with its controls labelled"></figure>
+      <ul>
+        <li><b>Throttle.</b> Slide it with your left thumb. The line across the track is MIL, full dry power. Push past the gap above it for afterburner; the thumb turns orange.</li>
+        <li><b>Pause.</b> Top right. Switching apps pauses too. Resume from the pause screen.</li>
+        <li><b>Look around.</b> Drag a finger anywhere on the view. The world turns with your finger and eases back when you let go. Tilt and throttle keep working.</li>
+      </ul>
+    </section>
+
+    <section class="card">
+      <h2>The HUD</h2>
+      <figure class="wide"><img src="./img/hud.png" alt="The head-up display with every symbol labelled"></figure>
+      <ul>
+        <li><b>Heading</b> across the top, degrees true.</li>
+        <li><b>Airspeed</b> on the left, in knots. <b>Altitude</b> on the right, in feet above sea level; below 1,500 ft above the ground it shows the radar altitude instead, with an R, as the F-16’s does.</li>
+        <li><b>Pitch ladder</b>: a bar every 5°, solid above the horizon and dashed below, rolling with the jet. The long bar is the horizon. Straight up and straight down get the F-16’s zenith and nadir symbols.</li>
+        <li><b>Waterline</b>: where the nose points. <b>Flight path marker</b>, the circle with wings: where the jet is actually going. The gap between them is the angle of attack.</li>
+        <li><b>Steerpoint</b>: a diamond on the next place when it is in view. When it isn’t, a small circle above the flight path marker with a tail pointing the way to turn. Lower right, the range to it in nautical miles and its name.</li>
+        <li>Lower left: <b>g</b>, <b>angle of attack</b> (α) in degrees, <b>Mach</b>, and the <b>engine</b>: IDLE, MIL, or AB with the afterburner percentage. The engine takes time to spool, and this shows the engine, not the throttle.</li>
+        <li><b>BE</b>: your own position from the bullseye, Springdale, as bearing and range.</li>
+      </ul>
+    </section>
+
+    <section class="card">
+      <h2>Where to fly</h2>
+      <figure class="wide">
+        <img src="./img/map.png" alt="A map of the region with the five places, the steerpoint loop and the air starts">
+        <figcaption>Inside the outlined squares the ground comes from a 30 m survey; between them, 90 m. The green loop joins the five steerpoints. Each jet is an air start, pointed the way the flight begins. The rings are the bullseye.</figcaption>
+      </figure>
+      <p>Choose a place on the start screen. Every flight starts 5,000 ft above the ground at 350 knots, wings level, pointed at the sight:</p>
+      <figure><img src="./img/start.png" alt="The start screen with its list of places"></figure>
+      <ul id="places"></ul>
+      <p>The HUD’s steerpoint is the next place on the loop: Zion, Bryce, Lake Powell, the Grand Canyon, Nellis, and round to Zion again. Pass within 2 nm of one and it steps to the next, so the loop can be flown round in about an hour at 400 knots. Fly again, on the pause and crash screens, goes back to the start screen to choose another place.</p>
+    </section>
+
+    <section class="card">
+      <h2>What the jet does</h2>
+      <p>It is an F-16, from NASA’s wind-tunnel data, flown by its fly-by-wire flight control system. Your tilt is a force on the stick; the control system turns it into surface commands, and everything you feel comes from that chain. Nothing points the jet where you want it to go.</p>
+      <ul>
+        <li>It gives up to 9 g, and stops there. Slow, it runs out of angle of attack first and gives less.</li>
+        <li>It won’t stall: the control system holds the angle of attack at about 25° however hard you pull. Near the limit the view shakes with buffet, and rolling gets slower.</li>
+        <li>Speed bleeds in a hard turn. Watch the airspeed, or the angle of attack climbing while g falls.</li>
+        <li>Below the ground the flight ends: Crashed, and Fly again.</li>
+        <li>The wind-tunnel data is subsonic. Above Mach 0.85 the drag rise is an approximation fitted to the real jet’s known top speeds, so the jet is at its most real below that.</li>
+      </ul>
+    </section>
+
+    <section class="card">
+      <h2>Settings</h2>
+      <figure><img src="./img/settings.png" alt="The settings screen"></figure>
+      <p>Light, Dark, or Auto to follow the phone. This guide, feedback by email, the credits, and the version. A new version of Rage is offered on the start and pause screens, never mid-flight: tap Update and it reopens.</p>
+    </section>
+
+    <section class="card">
+      <h2>When something’s wrong</h2>
+      <ul>
+        <li><b>It won’t rotate.</b> Turn off Portrait Orientation Lock in Control Center.</li>
+        <li><b>Motion access denied.</b> Close the app completely, open it again, tap Fly and choose Allow.</li>
+        <li><b>The screen dims mid-flight.</b> Keeping it awake needs iOS 18.4 or later.</li>
+        <li><b>It feels choppy.</b> Low Power Mode runs the screen at 30 frames a second. The jet flies the same; the picture updates less often.</li>
+        <li><b>The jet drifts with the phone level.</b> Pause and tap Recenter controls.</li>
+      </ul>
+    </section>
+
+    <section class="card">
+      <h2>Credits</h2>
+      <div id="credits" class="credits"></div>
+    </section>
+
+    <p class="foot">Rage <span class="version"></span> · <a href="../">Fly it</a> · <a id="feedback" href="mailto:135crewdog.github@gmail.com">Send feedback</a></p>
+  </div>
+
+  <script type="module">
+    import { APP_VERSION } from '../src/version.js';
+    import { loadTheme, applyTheme } from '../src/ui/screens.js';
+    import { PLACES, START_AGL_FT } from '../src/places.js';
+    // the same version as the app, and the app's theme choice (the two share their storage)
+    for (const el of document.querySelectorAll('#version, .version')) el.textContent = APP_VERSION;
+    document.getElementById('feedback').href = `mailto:135crewdog.github@gmail.com?subject=${encodeURIComponent(`Rage ${APP_VERSION} feedback`)}`;
+    applyTheme(loadTheme());
+    matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => applyTheme(loadTheme()));
+    // the places, from the same file the app flies from
+    const list = document.getElementById('places');
+    for (const p of PLACES) {
+      const li = document.createElement('li');
+      li.innerHTML = `<b>${p.name}</b>: ${p.where}.`;
+      list.append(li);
+    }
+    // the credits are the app's own, pulled from its page so there is one copy
+    fetch('../index.html').then((r) => r.text()).then((html) => {
+      const doc = new DOMParser().parseFromString(html, 'text/html');
+      const credits = doc.querySelector('#screen-credits .credits');
+      if (credits) document.getElementById('credits').replaceChildren(...credits.children);
+    }).catch(() => {});
+  </script>
+</body>
+</html>
