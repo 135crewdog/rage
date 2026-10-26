@@ -114,7 +114,8 @@ p { margin: 0; }
   background: var(--fill); color: var(--text);
 }
 a.btn { display: block; box-sizing: border-box; text-align: center; text-decoration: none; }
-.btn:disabled { opacity: 0.4; }
+.btn:disabled, .btn.offline { opacity: 0.4; }
+.btn.offline { pointer-events: none; }
 .btn.primary { background: var(--accent); color: var(--accent-text); }
 .link { border: 0; background: none; color: var(--accent); font-size: 17px; padding: 0; }
 .bar { display: flex; align-items: center; justify-content: space-between; }

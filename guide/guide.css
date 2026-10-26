@@ -1,10 +1,15 @@
 /* The user guide: a page that scrolls, in the app's tokens (../style.css),
-   with the app shell's fixed, unscrollable root undone. */
+   with the app shell's fixed, unscrollable root undone. Laid out for the
+   phone in landscape, as the sim is flown: the page is as wide as that
+   screen, so the pictures of it show at its own size. */
 html, body { position: static; height: auto; overflow: auto; touch-action: auto; background: var(--bg); }
 body { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; }
-.page { max-width: 640px; margin: 0 auto; padding: 24px 16px 40px; display: flex; flex-direction: column; gap: 12px; }
+.page {
+  max-width: 900px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px;
+  padding: calc(env(safe-area-inset-top, 0px) + 12px) max(16px, env(safe-area-inset-right, 0px)) calc(env(safe-area-inset-bottom, 0px) + 32px) max(16px, env(safe-area-inset-left, 0px));
+}
+.page .bar a.link { text-decoration: none; }
 .page .card { width: 100%; }   /* the app's cards are phone-sized; the guide's fill the page */
-.page h1 { text-align: center; }
 .page .sub { text-align: center; }
 .card h2 { text-align: left; }
 .card p, .card li { margin: 0 0 8px; }
@@ -14,8 +19,6 @@ body { -webkit-user-select: text; user-select: text; -webkit-touch-callout: defa
 .card a { color: var(--accent); text-decoration: none; }
 figure { margin: 4px 0 0; }
 figure img, figure svg { display: block; width: 100%; height: auto; border-radius: 8px; }
-/* the labelled pictures are the phone's own screen: shown at its size where the page allows, so the labels read */
-figure.wide { width: min(844px, 100vw - 32px); position: relative; left: 50%; transform: translateX(-50%); }
 figure.portrait img { width: auto; max-height: 360px; margin: 0 auto; }
 figcaption { color: var(--text2); font-size: 13px; margin-top: 6px; }
 .foot { text-align: center; color: var(--text2); font-size: 13px; }
