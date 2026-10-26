@@ -4,8 +4,10 @@
 // iPhone-sized landscape viewport, flies the air start, and writes to
 // guide/img/ a screenshot of the start screen, the rotate screen and
 // Settings, the flight view with its controls labelled, the HUD with every
-// symbol labelled (the HUD reports where it drew each one), and a map of the
-// region drawn from the real heightmaps and the places file. Then it loads
+// symbol labelled (the HUD reports where it drew each one), a map of the
+// region drawn from the real heightmaps and the places file, and the phone
+// itself rendered in three.js with that flight on its screen and arrows
+// wrapping round it for pitch and for roll. Then it loads
 // the guide and checks that it reads the app's version, places and credits
 // and that every picture is there. The pictures always go to guide/img/,
 // because that is where the guide looks for them; they are never checked
@@ -21,7 +23,7 @@ import assert from 'node:assert/strict';
 import { serve, sensor, ROOT } from './harness.js';
 
 const require = createRequire(import.meta.url);
-const PICTURES = ['start', 'rotate', 'settings', 'screen', 'hud', 'map'];
+const PICTURES = ['start', 'rotate', 'settings', 'screen', 'hud', 'map', 'hold-pitch', 'hold-roll'];
 
 // Draws leader lines and labels over the page, on a canvas of its own, for
 // the labelled pictures; items are { text, x, y, lx, ly, align } in CSS
@@ -155,6 +157,88 @@ async function drawMap(width, dpr = 2) {
   return canvas.toDataURL('image/png');
 }
 
+// The phone, held in landscape with the flight on its screen, rendered in
+// three.js inside the app page (which has the import map), with HUD-green
+// arrows wrapping round it: for 'pitch', over the top edge toward you and
+// away from you; for 'roll', round the phone clockwise and anticlockwise.
+// Millimetres; a real phone's proportions. Returns a PNG data URL, 2x.
+async function drawHold({ kind, shot }) {
+  const THREE = await import('three');
+  const W = 1100, H = 720;
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+  renderer.setPixelRatio(1); renderer.setSize(W, H, false); renderer.setClearColor(0x000000, 0);
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(24, W / H, 1, 2000);
+  if (kind === 'pitch') camera.position.set(0, 104, 260); else camera.position.set(60, 44, 290);
+  camera.lookAt(0, 8, 0);
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x444455, 1.2));
+  const key = new THREE.DirectionalLight(0xffffff, 1.5); key.position.set(-80, 120, 160); scene.add(key);
+  const rim = new THREE.DirectionalLight(0xffffff, 0.8); rim.position.set(60, 40, -120); scene.add(rim);
+  const rounded = (w, h, r) => {
+    const sh = new THREE.Shape();
+    sh.moveTo(-w / 2 + r, -h / 2); sh.lineTo(w / 2 - r, -h / 2); sh.quadraticCurveTo(w / 2, -h / 2, w / 2, -h / 2 + r);
+    sh.lineTo(w / 2, h / 2 - r); sh.quadraticCurveTo(w / 2, h / 2, w / 2 - r, h / 2); sh.lineTo(-w / 2 + r, h / 2);
+    sh.quadraticCurveTo(-w / 2, h / 2, -w / 2, h / 2 - r); sh.lineTo(-w / 2, -h / 2 + r); sh.quadraticCurveTo(-w / 2, -h / 2, -w / 2 + r, -h / 2);
+    return sh;
+  };
+  const PW = 148, PH = 72, PD = 7.8, BEVEL = 1.2;
+  const body = new THREE.Mesh(
+    new THREE.ExtrudeGeometry(rounded(PW, PH, 11), { depth: PD - 2 * BEVEL, bevelEnabled: true, bevelThickness: BEVEL, bevelSize: BEVEL, bevelSegments: 6, curveSegments: 24 }),
+    new THREE.MeshStandardMaterial({ color: 0x202024, roughness: 0.4, metalness: 0.35 }),
+  );
+  body.geometry.translate(0, 0, -(PD - 2 * BEVEL) / 2);
+  scene.add(body);
+  const tex = await new THREE.TextureLoader().loadAsync(shot);
+  tex.colorSpace = THREE.SRGBColorSpace; tex.repeat.set(1 / 140, 1 / 64); tex.offset.set(0.5, 0.5);   // ShapeGeometry's uvs are its millimetres
+  const screen = new THREE.Mesh(new THREE.ShapeGeometry(rounded(140, 64, 8), 24), new THREE.MeshBasicMaterial({ map: tex }));
+  screen.position.z = PD / 2 + 0.05;
+  scene.add(screen);
+  const green = new THREE.MeshStandardMaterial({ color: 0x7cff4f, emissive: 0x2f7a1c, roughness: 0.5 });
+  const arrow = (points) => {
+    const curve = new THREE.CatmullRomCurve3(points);
+    const tangent = curve.getTangent(1), end = points[points.length - 1];
+    const cone = new THREE.Mesh(new THREE.ConeGeometry(4.5, 11, 16), green);
+    cone.position.copy(end).addScaledVector(tangent, 5);
+    cone.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), tangent);
+    scene.add(new THREE.Mesh(new THREE.TubeGeometry(curve, 48, 1.7, 12), green), cone);
+    return end.clone().addScaledVector(tangent, 11);   // the tip, for its label
+  };
+  const D2R = Math.PI / 180;
+  const arc = (at, a0, a1, n = 24) => Array.from({ length: n + 1 }, (_, i) => at((a0 + (a1 - a0) * i / n) * D2R));
+  const tips = {};
+  if (kind === 'pitch') {
+    // round the long axis, over the top edge: toward you (+z) is nose up
+    const R = 56;
+    tips.up = arrow(arc((t) => new THREE.Vector3(40, R * Math.cos(t), R * Math.sin(t)), -50, 50));
+    tips.down = arrow(arc((t) => new THREE.Vector3(-40, R * Math.cos(t), R * Math.sin(t)), 50, -50));
+  } else {
+    // round the screen's axis: along the top edge left to right is clockwise, roll right; along the bottom right to left, roll left
+    tips.right = arrow(arc((t) => new THREE.Vector3(300 * Math.cos(t), -255 + 300 * Math.sin(t), 0), 101, 79));
+    tips.left = arrow(arc((t) => new THREE.Vector3(300 * Math.cos(t), 255 - 300 * Math.sin(t), 0), 79, 101));
+  }
+  renderer.render(scene, camera);
+  const out = document.createElement('canvas'); out.width = W; out.height = H;
+  const ctx = out.getContext('2d'); ctx.drawImage(renderer.domElement, 0, 0);
+  renderer.dispose();
+  const project = (v) => { const p = v.clone().project(camera); return { x: (p.x + 1) / 2 * W, y: (1 - p.y) / 2 * H }; };
+  ctx.font = '600 34px -apple-system, BlinkMacSystemFont, system-ui, sans-serif'; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  const label = (text, v, dx, dy, align) => {
+    const a = project(v), lx = a.x + dx, ly = a.y + dy;
+    ctx.textAlign = align;
+    const ex = align === 'left' ? lx - 12 : lx + 12;
+    for (const [w, c] of [[9, 'rgba(0,0,0,0.6)'], [3.5, '#fff']]) { ctx.lineWidth = w; ctx.strokeStyle = c; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(ex, ly); ctx.stroke(); }
+    ctx.lineWidth = 9; ctx.strokeStyle = 'rgba(0,0,0,0.7)'; ctx.strokeText(text, lx, ly); ctx.fillStyle = '#fff'; ctx.fillText(text, lx, ly);
+  };
+  if (kind === 'pitch') {
+    label('toward you: nose up', tips.up, -40, 330, 'right');
+    label('away: nose down', tips.down, 50, -40, 'left');
+  } else {
+    label('clockwise: roll right', tips.right, -40, -70, 'right');
+    label('anticlockwise: roll left', tips.left, 40, 70, 'left');
+  }
+  return out.toDataURL('image/png');
+}
+
 async function main() {
   const out = join(ROOT, 'guide', 'img');
   await mkdir(out, { recursive: true });
@@ -195,6 +279,7 @@ async function main() {
     // the screen: the controls labelled
     const box = (sel) => page.evaluate((q) => { const r = document.querySelector(q).getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height }; }, sel);
     const thumb = await box('#throttle .thumb'), mil = await box('#throttle .mil'), stick = await box('#stick'), pause = await box('#pause');
+    const flight = (await page.screenshot({ timeout: 120000, animations: 'disabled' })).toString('base64');   // the plain view, for the phone's screen
     const a = await page.evaluate(() => window.rage.hud);
     console.log('HUD anchors:', Object.keys(a).join(', '));
     await page.evaluate(drawLabels, [
@@ -232,6 +317,12 @@ async function main() {
     // the map, from the loaded terrain
     const map = await page.evaluate(drawMap, 640);
     await writeFile(join(out, 'map.png'), Buffer.from(map.split(',')[1], 'base64'));
+
+    // the phone in the hand, with that flight on its screen and the arrows round it
+    for (const kind of ['pitch', 'roll']) {
+      const png = await page.evaluate(drawHold, { kind, shot: `data:image/png;base64,${flight}` });
+      await writeFile(join(out, `hold-${kind}.png`), Buffer.from(png.split(',')[1], 'base64'));
+    }
 
     // pause, settings, and the rotate screen
     await page.click('#pause');
