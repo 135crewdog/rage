@@ -48,6 +48,8 @@ export function createScreens({ version, onFly, onResume, onRecenter, onFlyAgain
   function hide() { show(null); }
 
   document.getElementById('version').textContent = version;
+  // feedback goes by email, with the version in the subject so the owner knows which build it is about
+  document.getElementById('feedback').href = `mailto:135crewdog.github@gmail.com?subject=${encodeURIComponent(`Rage ${version} feedback`)}`;
   document.getElementById('fly').addEventListener('click', onFly);
   document.getElementById('resume').addEventListener('click', onResume);
   document.getElementById('recenter').addEventListener('click', onRecenter);
