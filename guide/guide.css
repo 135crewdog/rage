@@ -3,6 +3,7 @@
 html, body { position: static; height: auto; overflow: auto; touch-action: auto; background: var(--bg); }
 body { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; }
 .page { max-width: 640px; margin: 0 auto; padding: 24px 16px 40px; display: flex; flex-direction: column; gap: 12px; }
+.page .card { width: 100%; }   /* the app's cards are phone-sized; the guide's fill the page */
 .page h1 { text-align: center; }
 .page .sub { text-align: center; }
 .card h2 { text-align: left; }
@@ -17,6 +18,5 @@ figure img, figure svg { display: block; width: 100%; height: auto; border-radiu
 figure.wide { width: min(844px, 100vw - 32px); position: relative; left: 50%; transform: translateX(-50%); }
 figure.portrait img { width: auto; max-height: 360px; margin: 0 auto; }
 figcaption { color: var(--text2); font-size: 13px; margin-top: 6px; }
-.hold { background: var(--fill); padding: 8px 0; }
 .foot { text-align: center; color: var(--text2); font-size: 13px; }
 .foot a { color: var(--accent); text-decoration: none; }
