@@ -1,6 +1,6 @@
 // The chase camera: behind and slightly above the jet, following its attitude
 // smoothly enough not to jitter and close enough that the jet's own motion
-// reads. The cues of docs/flight-model.md section 10 (buffet shake, load sag)
+// reads. The cues of docs/flight-model.md section 10 (buffet shake, load)
 // are applied here, driven by the model and never by a timer. A look-around
 // (src/input/look.js) orbits the camera around the jet in the jet's frame.
 
@@ -8,7 +8,7 @@ import * as THREE from 'three';
 
 const BEHIND = 15;        // m along the jet's +z (behind the tail)
 const ABOVE = 3.2;        // m
-const SAG_PER_G = 0.35;   // m the camera sags toward the belly per g above 1
+const LOAD_PER_G = 0.35;  // m the camera rises per g above 1 (and drops per g below), so the load reads as pushing the jet down
 const BUFFET_ONSET = 12;  // deg AoA
 const BUFFET_FULL = 25;
 const D2R = Math.PI / 180;
@@ -39,8 +39,10 @@ export function createChaseCamera(camera) {
 
       lookQ.setFromEuler(euler.set(look.pitch * D2R, look.yaw * D2R, 0, 'YXZ'));
       qv.copy(q).multiply(lookQ);
-      const sag = -SAG_PER_G * Math.max(0, aux.nz - 1);
-      offset.set(0, ABOVE + sag, BEHIND).applyQuaternion(qv);
+      // load: positive g pushes the jet toward its belly, so the camera looks
+      // down on it from higher; negative g the other way; within the jet's limits
+      const load = LOAD_PER_G * (Math.max(-3, Math.min(9, aux.nz)) - 1);
+      offset.set(0, ABOVE + load, BEHIND).applyQuaternion(qv);
       pos.copy(position).add(offset);
 
       // buffet: a small, high-frequency shake that starts at 12° AoA and grows
