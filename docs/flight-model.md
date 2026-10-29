@@ -295,7 +295,7 @@ From the atmosphere module (pressure p, temperature, density), with sea-level va
 Sound comes in a later milestone. Until then the cues are visual, and each one is driven by the model, never by a timer or a script. Starting values; tune them on the phone.
 
 - **Buffet** (a game cue; public sources don't document F-16 buffet onset). A small, high-frequency camera shake that starts around 12° AoA and grows as AoA approaches the 25° limit, scaled by dynamic pressure (stronger when fast). It tells the pilot the limiter is near before the HUD does.
-- **Load.** The chase camera sags slightly toward the belly as g builds, so a 9 g pull looks heavier than a 3 g one.
+- **Load.** The chase camera rises as g builds, looking down on the jet as the load pushes it toward its belly, and drops below its normal place under negative g, the same 0.35 m per g both ways, so a 9 g pull looks heavier than a 3 g one and a push looks like one. (It first sagged the camera toward the belly instead, which read backwards to the owner: the jet climbed toward the centre of the screen as g built.)
 - **Limiter.** When the pilot pulls past what the limiter allows, the HUD's g and AoA readouts stop climbing while the stick indicator (part of the UI, not the HUD) keeps moving. Nothing else is needed: that plateau is what an F-16 pilot feels.
 - **Energy.** Speed bleeds in a hard turn and the AoA needed for the same g rises; both are visible on the HUD.
 
