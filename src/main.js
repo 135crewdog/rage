@@ -35,8 +35,9 @@ const jet = createAircraft();
 scene.add(jet);
 // Fly waits for the model: on a first visit it may still be downloading.
 // The ground: the region of terrain/region.json (see heightmap.js), a base
-// tile and an atlas of fine patches. Each image is drawn once to read its
-// posts for the CPU sampler; the GPU reads the images directly.
+// tile and an atlas of fine patches, and the satellite imagery on the same
+// grids. Each heightmap is drawn once to read its posts for the CPU sampler;
+// the GPU reads the images directly.
 let terrain = null;
 async function loadTerrain() {
   const region = await (await fetch('./terrain/region.json')).json();
@@ -50,12 +51,14 @@ async function loadTerrain() {
     ctx.drawImage(image, 0, 0);
     return { image, heights: decodeHeights(ctx.getImageData(0, 0, meta.w, meta.h).data, meta.w * meta.h) };
   };
-  const [base, atlas] = await Promise.all([load(region.base), load(region.atlas)]);
+  const picture = async (name) => { const image = new Image(); image.src = './terrain/' + name; await image.decode(); return image; };
+  const [base, atlas, colourBase, colourAtlas] = await Promise.all([load(region.base), load(region.atlas), picture(region.colour.base), picture(region.colour.atlas)]);
   return {
     sampler: createSampler(region, { base: base.heights, atlas: atlas.heights }),
     projection: createProjection(region),
-    mesh: createTerrain(scene, region, { base: base.image, atlas: atlas.image }, world),
+    mesh: createTerrain(scene, region, { base: base.image, atlas: atlas.image, colourBase, colourAtlas }, world, Math.min(8, renderer.capabilities.getMaxAnisotropy())),
     region,
+    colour: { base: { w: colourBase.width, h: colourBase.height }, atlas: { w: colourAtlas.width, h: colourAtlas.height } },
   };
 }
 // ground height in feet under a simulation state (north, east in feet)
@@ -101,12 +104,18 @@ let throttleValue = sim.trimThrottle;
 const stick = { pitch: 0, roll: 0 };
 // Portrait: the rotate screen, whatever else was asked for.
 const portrait = matchMedia('(orientation: portrait)');
+// Read the viewport itself, not the media query's cached answer: an
+// orientation event can arrive before the query has re-evaluated, and a
+// screen chosen on the stale answer stayed wrong (the pause screen in
+// portrait, with Resume refusing).
+const isPortrait = () => innerHeight > innerWidth;
+let wasPortrait = isPortrait();
 let place = loadPlace();         // the place to fly from, chosen on the start screen
 const screens = createScreens({
   version: APP_VERSION,
   onFly: fly, onResume: resume, onRecenter: recenter, onFlyAgain: flyAgain, onUpdate: applyUpdate,
   onPlace: (name) => { place = name; if (mode === 'start' && terrain) airStart(); },
-  locked: () => (portrait.matches ? 'rotate' : null),
+  locked: () => (isPortrait() ? 'rotate' : null),
 });
 const throttle = createThrottle(document.getElementById('throttle'), throttleValue, (v) => { throttleValue = v; });
 const stickIndicator = createStickIndicator(document.getElementById('stick'));
@@ -200,7 +209,7 @@ function fly() {
 }
 
 function startFlight() {
-  if (portrait.matches) { screens.show('rotate'); return; }   // no flying in portrait
+  if (isPortrait()) { screens.show('rotate'); return; }   // no flying in portrait
   mode = 'flying';
   controls.hidden = false;
   screens.hide();
@@ -215,7 +224,7 @@ function pause() {
 }
 
 function resume() {
-  if (mode !== 'paused' || portrait.matches) return;
+  if (mode !== 'paused' || isPortrait()) return;
   mode = 'flying';
   screens.hide();
   carry = 0;
@@ -225,7 +234,7 @@ function resume() {
 // Fly again returns to the start screen, at the air start of the chosen
 // place, so a different place can be picked before the next flight.
 function flyAgain() {
-  if (portrait.matches) return;
+  if (isPortrait()) return;
   airStart();
   look.reset();
   mode = 'start';
@@ -246,13 +255,18 @@ document.addEventListener('visibilitychange', () => {
 
 // Portrait: show the rotate screen; on any rotation during flight, pause and recenter.
 function onRotate() {
-  if (portrait.matches && mode === 'flying') pause();
-  if (!portrait.matches && mode === 'paused') recenter();
+  const p = isPortrait();
+  if (p !== wasPortrait) {
+    wasPortrait = p;
+    if (p && mode === 'flying') pause();
+    if (!p && mode === 'paused') recenter();
+  }
   showForMode();
   resize();
 }
 portrait.addEventListener('change', onRotate);
-if (portrait.matches) screens.show('rotate');
+window.addEventListener('resize', onRotate);   // whichever event comes last settles the screen on the viewport as it is
+if (isPortrait()) screens.show('rotate');
 // A flip between the two landscapes never changes the portrait query, but it
 // turns the tilt frame by 180°: pause and recenter on any orientation change.
 let lastAngle = screenAngle();
