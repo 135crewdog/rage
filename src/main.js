@@ -35,8 +35,9 @@ const jet = createAircraft();
 scene.add(jet);
 // Fly waits for the model: on a first visit it may still be downloading.
 // The ground: the region of terrain/region.json (see heightmap.js), a base
-// tile and an atlas of fine patches. Each image is drawn once to read its
-// posts for the CPU sampler; the GPU reads the images directly.
+// tile and an atlas of fine patches, and the satellite imagery on the same
+// grids. Each heightmap is drawn once to read its posts for the CPU sampler;
+// the GPU reads the images directly.
 let terrain = null;
 async function loadTerrain() {
   const region = await (await fetch('./terrain/region.json')).json();
@@ -50,12 +51,14 @@ async function loadTerrain() {
     ctx.drawImage(image, 0, 0);
     return { image, heights: decodeHeights(ctx.getImageData(0, 0, meta.w, meta.h).data, meta.w * meta.h) };
   };
-  const [base, atlas] = await Promise.all([load(region.base), load(region.atlas)]);
+  const picture = async (name) => { const image = new Image(); image.src = './terrain/' + name; await image.decode(); return image; };
+  const [base, atlas, colourBase, colourAtlas] = await Promise.all([load(region.base), load(region.atlas), picture(region.colour.base), picture(region.colour.atlas)]);
   return {
     sampler: createSampler(region, { base: base.heights, atlas: atlas.heights }),
     projection: createProjection(region),
-    mesh: createTerrain(scene, region, { base: base.image, atlas: atlas.image }, world),
+    mesh: createTerrain(scene, region, { base: base.image, atlas: atlas.image, colourBase, colourAtlas }, world, Math.min(8, renderer.capabilities.getMaxAnisotropy())),
     region,
+    colour: { base: { w: colourBase.width, h: colourBase.height }, atlas: { w: colourAtlas.width, h: colourAtlas.height } },
   };
 }
 // ground height in feet under a simulation state (north, east in feet)

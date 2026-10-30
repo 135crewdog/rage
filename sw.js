@@ -4,7 +4,7 @@
 // skipWaiting() on its own; the app offers the update on the start or pause
 // screen and posts "skip-waiting" when the pilot accepts.
 
-const VERSION = '0.1.25';   // the same value as APP_VERSION in src/version.js
+const VERSION = '0.1.26';   // the same value as APP_VERSION in src/version.js
 const CACHE = `rage-${VERSION}`;
 const FILES = [
   './',
@@ -49,6 +49,8 @@ const FILES = [
   './src/render/heightmap.js',
   './terrain/base.png',
   './terrain/places.png',
+  './terrain/base-colour.jpg',
+  './terrain/places-colour.jpg',
   './terrain/region.json',
   './src/render/camera.js',
   './src/hud/hud.js',

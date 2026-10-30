@@ -65,6 +65,8 @@ async function main() {
     // the whole region loaded: five patches, and Las Vegas 194 km west is at its height
     const region = await page.evaluate(() => ({ patches: window.rage.terrain.region.patches.length, vegas: window.rage.terrain.sampler.heightAt(-194066, 120023) }));
     assert.equal(region.patches, 5, 'five patches');
+    const colour = await page.evaluate(() => ({ ...window.rage.terrain.colour, expect: { base: window.rage.terrain.region.base, atlas: window.rage.terrain.region.atlas, scale: window.rage.terrain.region.colour.scale } }));
+    assert.deepEqual([colour.base.w, colour.base.h, colour.atlas.w, colour.atlas.h], [colour.expect.base.w, colour.expect.base.h, colour.expect.atlas.w * colour.expect.scale, colour.expect.atlas.h * colour.expect.scale], 'the imagery loaded on the heightmaps\' grids');
     assert.ok(Math.abs(region.vegas - 656) < 20, `the Strip at 656 m: ${region.vegas}`);
     assert.equal(await page.evaluate(() => document.getElementById('controls').hidden), false);
 

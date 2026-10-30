@@ -4,9 +4,10 @@
 // snapped to its own grid so nothing swims, each with a hole where the finer
 // one sits; the vertex shader lifts every vertex to the height read from the
 // heightmaps (the same lookup heightmap.js does on the CPU), and the fragment
-// shader colours the ground by height and slope with a fine grain, paints
-// the lakes where the survey is flat at their levels, lights it by the sun
-// and fades it into the fog. The grids are positioned relative to the
+// shader colours the ground from the satellite imagery, laid over the same
+// base and patches and blended across their edges the same way, with a
+// fine grain for close-up detail, paints the lakes where the survey is flat
+// at their levels, lights it by the sun and fades it into the fog. The grids are positioned relative to the
 // camera, so single-precision positions stay exact 250 km from the origin.
 // Metres; world x east, z south, y up.
 
@@ -61,6 +62,31 @@ function heightGlsl(patches) {
   float height(vec2 xz) { float w[${patches}]; weigh(xz, w); return heightWith(xz, w); }`;
 }
 
+// The imagery, on the same grids: the base's colour pixels sit on its posts,
+// each patch's are colourScale times as many across its square. Linear
+// filtering with mipmaps does the smoothing; the patches are weighed as the
+// heights are, so colour and ground blend together at every edge.
+function colourGlsl(patches) {
+  return `
+  uniform sampler2D baseColour, atlasColour;
+  uniform vec2 atlasColourSize;
+  uniform float colourScale;
+  vec3 baseColourAt(vec2 xz) {
+    vec2 p = clamp((xz - baseGrid.xy) / baseGrid.z, vec2(0.0), baseSize - 1.0);
+    return texture2D(baseColour, (p + 0.5) / baseSize).rgb;
+  }
+  vec3 patchColourAt(vec2 xz, vec4 rect, vec4 pix) {
+    float n = pix.z * colourScale;
+    vec2 p = clamp((xz - rect.xy) / rect.z * (n - 1.0), vec2(0.0), vec2(n - 1.0));
+    return texture2D(atlasColour, (pix.xy * colourScale + p + 0.5) / atlasColourSize).rgb;
+  }
+  vec3 colourWith(vec2 xz, float w[${patches}]) {
+    vec3 c = baseColourAt(xz);
+    for (int i = 0; i < ${patches}; i++) if (w[i] > 0.0) c = mix(c, patchColourAt(xz, patchRect[i], patchPix[i]), w[i]);
+    return c;
+  }`;
+}
+
 const vertexShader = (patches) => `${heightGlsl(patches)}
   uniform vec2 rel;       // the level's centre relative to the camera, so positions stay small
   uniform float spacing;
@@ -76,7 +102,7 @@ const vertexShader = (patches) => `${heightGlsl(patches)}
     gl_Position = projectionMatrix * mat4(mat3(viewMatrix)) * vec4(rp, 1.0);
   }`;
 
-const fragmentShader = (patches, lakes) => `${heightGlsl(patches)}
+const fragmentShader = (patches, lakes) => `${heightGlsl(patches)}${colourGlsl(patches)}
   uniform vec3 sun, fogColor; uniform float fogNear, fogFar;
   uniform vec4 lakeBox[${lakes}];     // x0, z0, x1, z1
   uniform float lakeLevel[${lakes}];  // m above the sea
@@ -94,17 +120,14 @@ const fragmentShader = (patches, lakes) => `${heightGlsl(patches)}
     float hz = heightWith(wp.xz + vec2(0.0, d), w) - heightWith(wp.xz - vec2(0.0, d), w);
     vec3 n = normalize(vec3(-hx, 2.0 * d, -hz));
     float slope = 1.0 - n.y;
-    // the region's bands by height above the sea: desert floor, green valleys, sandstone walls, pale plateaus; grey where it is steep
-    vec3 desert = vec3(0.70, 0.60, 0.46), valley = vec3(0.34, 0.44, 0.26), sandstone = vec3(0.66, 0.40, 0.29), plateau = vec3(0.74, 0.64, 0.50), rock = vec3(0.48, 0.42, 0.40);
-    vec3 c = mix(desert, valley, smoothstep(950.0, 1150.0, wp.y));
-    c = mix(c, sandstone, smoothstep(1150.0, 1850.0, wp.y));
-    c = mix(c, plateau, smoothstep(2150.0, 2950.0, wp.y));
-    c = mix(c, rock, smoothstep(0.20, 0.55, slope));
-    // a grain at two scales so the ground reads as moving at low level, fading before it aliases
+    // the ground's colour is the imagery's, the patches blended in with the same weights as their heights
+    vec3 c = colourWith(wp.xz, w);
+    // a grain at two scales so the ground reads as moving at low level, lighter than the old painted ground's, fading before it aliases
     float dist = length(rp);
     float grain = 0.6 * noise(wp.xz / 50.0) + 0.4 * noise(wp.xz / 7.0);
-    c *= mix(0.84 + 0.16 * grain, 0.92, smoothstep(1500.0, 6000.0, dist));
-    float light = max(dot(n, sun), 0.0) * 0.85 + 0.35;
+    c *= mix(0.9 + 0.1 * grain, 0.95, smoothstep(1500.0, 6000.0, dist));
+    // lit by the sun, gently: the imagery carries the satellite's own shading, so the slopes are not shaded twice over
+    float light = max(dot(n, sun), 0.0) * 0.45 + 0.72;
     c *= light;
     // water: where the ground is flat at a lake's level inside its box. The
     // survey recorded the lakes full, as flat ground; this paints them.
@@ -167,6 +190,18 @@ function levelGeometry(withHole) {
   return { geo, variants };
 }
 
+// The imagery: filtered, mipmapped and anisotropic, since the ground is seen at a grazing angle.
+function colourTexture(image, anisotropy) {
+  const texture = new THREE.Texture(image);
+  texture.magFilter = THREE.LinearFilter; texture.minFilter = THREE.LinearMipmapLinearFilter;
+  texture.generateMipmaps = true;
+  texture.anisotropy = anisotropy;
+  texture.flipY = false;
+  texture.colorSpace = THREE.NoColorSpace;   // its values are used as they are, like the painted colours were
+  texture.needsUpdate = true;
+  return texture;
+}
+
 function heightTexture(image) {
   const texture = new THREE.Texture(image);
   texture.magFilter = texture.minFilter = THREE.NearestFilter;
@@ -177,14 +212,17 @@ function heightTexture(image) {
   return texture;
 }
 
-// region: the parsed region.json; images: { base, atlas } the two heightmap
-// images; world: the world's fog and sun to match.
-export function createTerrain(scene, region, images, world) {
+// region: the parsed region.json; images: { base, atlas, colourBase,
+// colourAtlas } the two heightmap images and the two imagery images; world:
+// the world's fog and sun to match; anisotropy: what the renderer allows.
+export function createTerrain(scene, region, images, world, anisotropy = 1) {
   const { base, atlas } = region;
   const patches = [...region.patches].sort((a, b) => b.post - a.post);   // coarsest first, so the finest ends on top
   const lakes = region.lakes ?? [];
   const shared = {
     baseMap: { value: heightTexture(images.base) }, atlasMap: { value: heightTexture(images.atlas) },
+    baseColour: { value: colourTexture(images.colourBase, anisotropy) }, atlasColour: { value: colourTexture(images.colourAtlas, anisotropy) },
+    atlasColourSize: { value: new THREE.Vector2(atlas.w * region.colour.scale, atlas.h * region.colour.scale) }, colourScale: { value: region.colour.scale },
     baseGrid: { value: new THREE.Vector4(base.x0, base.z0, base.post, base.flat) },
     baseSize: { value: new THREE.Vector2(base.w, base.h) }, atlasSize: { value: new THREE.Vector2(atlas.w, atlas.h) },
     baseRange: { value: new THREE.Vector2(base.min, base.max - base.min) }, atlasRange: { value: new THREE.Vector2(atlas.min, atlas.max - atlas.min) },

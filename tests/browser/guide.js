@@ -71,34 +71,31 @@ async function drawMap(width, dpr = 2) {
   width *= dpr;
   const px = (lat, lon) => { const w = proj.toWorld(lat, lon); return { x: (w.x - b.x0) * k, y: (w.z - b.z0) * k }; };   // k is per CSS pixel once the overlay starts
 
-  // heights at every pixel, then the terrain's colour bands lit from the same sun as the world
+  // heights at every pixel, then the imagery lit from the same sun as the world
   const hs = new Float32Array(width * height);
   for (let j = 0; j < height; j++) for (let i = 0; i < width; i++) hs[j * width + i] = sampler.heightAt(b.x0 + (i + 0.5) / k, b.z0 + (j + 0.5) / k);
   const canvas = document.createElement('canvas'); canvas.width = width; canvas.height = height;
   const ctx = canvas.getContext('2d');
-  const img = ctx.createImageData(width, height);
+  const picture = new Image(); picture.src = './terrain/' + region.colour.base; await picture.decode();
+  ctx.drawImage(picture, 0, 0, width, height);
+  const img = ctx.getImageData(0, 0, width, height);
   const metre = 1 / k;
   const sun = [-0.5, 0.7071, 0.5];
-  const mix = (a, c, t) => a.map((v, n) => v + (c[n] - v) * t);
-  const smooth = (e0, e1, x) => { const t = Math.min(1, Math.max(0, (x - e0) / (e1 - e0))); return t * t * (3 - 2 * t); };
-  const desert = [0.70, 0.60, 0.46], valley = [0.34, 0.44, 0.26], sandstone = [0.66, 0.40, 0.29], plateau = [0.74, 0.64, 0.50], rock = [0.48, 0.42, 0.40], water = [0.10, 0.28, 0.40];
+  const water = [0.10, 0.28, 0.40];
   for (let j = 0; j < height; j++) for (let i = 0; i < width; i++) {
     const h = hs[j * width + i];
     const dx = (hs[j * width + Math.min(width - 1, i + 1)] - hs[j * width + Math.max(0, i - 1)]) / (2 * metre);
     const dz = (hs[Math.min(height - 1, j + 1) * width + i] - hs[Math.max(0, j - 1) * width + i]) / (2 * metre);
     const slope = Math.hypot(dx, dz);
-    let c = mix(desert, valley, smooth(950, 1150, h));
-    c = mix(c, sandstone, smooth(1150, 1850, h));
-    c = mix(c, plateau, smooth(2150, 2950, h));
-    c = mix(c, rock, smooth(0.20, 0.55, slope));
+    const o = (j * width + i) * 4;
+    let c = [img.data[o] / 255, img.data[o + 1] / 255, img.data[o + 2] / 255];
     const x = b.x0 + (i + 0.5) / k, z = b.z0 + (j + 0.5) / k;
     for (const lake of region.lakes) {
       if (x > lake.x0 && x < lake.x1 && z > lake.z0 && z < lake.z1 && Math.abs(h - lake.level) < 2.5 && slope < 0.01) c = water;
     }
     const n = [-dx, 1, -dz], len = Math.hypot(...n);
     const shade = Math.max(0, (n[0] * sun[0] + n[1] * sun[1] + n[2] * sun[2]) / len);
-    const light = 0.55 + 0.6 * shade;
-    const o = (j * width + i) * 4;
+    const light = 0.72 + 0.45 * shade;
     img.data[o] = Math.min(255, c[0] * light * 255); img.data[o + 1] = Math.min(255, c[1] * light * 255); img.data[o + 2] = Math.min(255, c[2] * light * 255); img.data[o + 3] = 255;
   }
   ctx.putImageData(img, 0, 0);

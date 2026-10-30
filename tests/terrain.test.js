@@ -138,6 +138,33 @@ test('the real region: known places are at their heights', () => {
   near(s.heightAt(-400000, 0), meta.base.flat, 0.01, 'far outside the base: the flat edge height');
 });
 
+// A JPEG's size, from its start-of-frame marker; no decoder needed.
+function jpegSize(path) {
+  const b = readFileSync(path);
+  let pos = 2;
+  while (pos < b.length) {
+    assert.equal(b[pos], 0xff, 'a marker');
+    const m = b[pos + 1], len = b.readUInt16BE(pos + 2);
+    if (m >= 0xc0 && m <= 0xc2) return { h: b.readUInt16BE(pos + 5), w: b.readUInt16BE(pos + 7) };
+    pos += 2 + len;
+  }
+  throw new Error('no frame');
+}
+
+test('the real region: the imagery sits on the same grids as the heights', () => {
+  const meta = JSON.parse(readFileSync(new URL('../terrain/region.json', import.meta.url)));
+  const colour = meta.colour;
+  assert.ok(colour && colour.scale >= 1, 'region.json names the imagery');
+  const base = jpegSize(new URL(`../terrain/${colour.base}`, import.meta.url));
+  const atlas = jpegSize(new URL(`../terrain/${colour.atlas}`, import.meta.url));
+  console.log(`  ${colour.base}: ${base.w} x ${base.h}; ${colour.atlas}: ${atlas.w} x ${atlas.h}, ${colour.scale} pixels per post`);
+  assert.deepEqual(base, { w: meta.base.w, h: meta.base.h }, 'the base colour pixels sit on the base posts');
+  assert.deepEqual(atlas, { w: meta.atlas.w * colour.scale, h: meta.atlas.h * colour.scale }, 'the atlas colour is the height atlas at the scale');
+  for (const p of meta.patches) {
+    assert.ok((p.px + p.size) * colour.scale <= atlas.w && (p.py + p.size) * colour.scale <= atlas.h, `${p.name} fits the colour atlas`);
+  }
+});
+
 test('the altitude window: barometric above 1,500 ft AGL, radar with an R below it', () => {
   assert.deepEqual(altitudeDisplay(9000, 4000), { radar: false, value: 9000 });
   assert.deepEqual(altitudeDisplay(5234, 4000), { radar: true, value: 1230 });
