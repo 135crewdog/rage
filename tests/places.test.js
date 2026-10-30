@@ -58,7 +58,8 @@ test('navigation: bearings and ranges in the flat world, and how the jet calls t
   assert.equal(callOf({ bearing: 58.4, range: 47.2 }), '058 for 47');
   assert.equal(callOf({ bearing: 359.6, range: 0.4 }), '000 for 0', 'rounds round the compass');
   const calls = Object.fromEntries(PLACES.map((p) => [p.name, bullseyeOf(p, projection)]));
-  for (const [name, b, r] of [['Bryce Canyon National Park', 58, 47], ['Lake Powell', 102, 74], ['Grand Canyon National Park', 147, 78], ['Nellis AFB', 239, 114]]) {
+  // from Homey Airport: Zion 089 for 137
+  for (const [name, b, r] of [['Zion National Park', 89, 137], ['Bryce Canyon National Park', 83, 176], ['Lake Powell', 95, 208], ['Grand Canyon National Park', 111, 190], ['Nellis AFB', 149, 70]]) {
     console.log(`  ${name}: bullseye ${callOf(calls[name])}`);
     near(calls[name].bearing, b, 1.5, name); near(calls[name].range, r, 1.5, name);
   }
