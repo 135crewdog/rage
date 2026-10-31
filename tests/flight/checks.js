@@ -143,7 +143,24 @@ export function check10() {
     text: `${f(time, 0)} s flown over ${2 * starts.length} flights, α max ${f(alphaMax, 1)}°, backstop engaged in ${backstops}, crashes ${crashes}, NaN ${nan}` };
 }
 
-export const CHECKS = [check1, check2, check3, check4, check5, check5b, check6, check7, check8, check9, check10];
+// 11: the stick released at a 1 g trim past the 15° limiter onset. The
+// floor on the pilot's command is 0 g this slow; the limiter's subtraction
+// comes after it (8.3, as in the jet), so the law unloads firmly to bring α
+// down, and must do so without negative g and settle with the stabilator
+// near neutral.
+export function check11() {
+  const results = [105, 115].map((kcas) => {
+    const { rows, summary } = flyManoeuvre('level', { kcas, t: 5 });
+    const tBelow = rows.find((r) => r.alpha < 15)?.t;
+    const settled = after(rows, 3).every((r) => Math.abs(r.el) <= 5);
+    return { kcas, start: rows[0].alpha, tBelow, nzMin: summary.nzMin, elMax: Math.max(...rows.map((r) => r.el)), settled, nan: summary.nan };
+  });
+  const pass = results.every((r) => r.tBelow !== undefined && r.tBelow <= 2 && r.nzMin >= 0 && r.nzMin <= 0.95 && r.settled && !r.nan);
+  return { name: '11 stick released at a 1 g trim past the limiter onset (105 and 115 KCAS)', pass,
+    text: results.map((r) => `${r.kcas} KCAS from α ${f(r.start, 1)}°: below 15° at ${r.tBelow === undefined ? 'never' : f(r.tBelow, 2) + ' s'}, n_z min ${f(r.nzMin, 2)}, stabilator to ${f(r.elMax, 1)}°, ${r.settled ? 'within ±5° from 3 s' : 'NOT settled by 3 s'}`).join('; ') };
+}
+
+export const CHECKS = [check1, check2, check3, check4, check5, check5b, check6, check7, check8, check9, check10, check11];
 
 export function runChecks(only) {
   return CHECKS.filter((c) => !only || only.includes(c.name.replace('check', ''))).map((c) => c());

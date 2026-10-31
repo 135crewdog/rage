@@ -143,9 +143,11 @@ export function step(x, controls, dt = DT, xcg = XCG) {
   return { state: y, aux };
 }
 
-// Below the ground the flight is over.
-export function crashed(x) {
-  return x[IX.H] <= 0;
+// Below the ground the flight is over. The model knows only the sea; the
+// app passes the terrain's height under the jet (ft), read from the same
+// heightmap the ground is drawn from.
+export function crashed(x, groundFt = 0) {
+  return x[IX.H] <= groundFt;
 }
 
 export { D2R, R2D };

@@ -208,4 +208,10 @@ test('below the ground the flight is over', () => {
   while (!crashed(x) && t < 5) { x = step(x, controls).state; t += DT; }
   assert.ok(crashed(x));
   assert.ok(t < 1);
+  // against the ground that is there: the terrain's height under the jet, not the sea
+  const high = makeState({ vt: 500, h: 4000 });
+  assert.equal(crashed(high), false, '4,000 ft over the sea');
+  assert.equal(crashed(high, 3999), false, 'a foot above a 3,999 ft plateau');
+  assert.equal(crashed(high, 4000), true, 'on the plateau');
+  assert.equal(crashed(high, 4100), true, 'inside a 4,100 ft mesa');
 });
