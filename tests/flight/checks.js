@@ -81,9 +81,11 @@ export function check6() {
   return { name: '6 full forward stick at 450 KCAS', pass, text: `min ${f(summary.nzMin, 2)} g, α min ${f(summary.alphaMin, 1)}°` };
 }
 
-// |β| through the first 360° of roll, and the peak stability-axis roll rate.
+// |β| through the first 360° of roll (and through each full roll after it,
+// in perRoll), and the peak stability-axis roll rate.
 function rollMetrics(rows, t0) {
   let turned = 0, prev = null, betaMax = 0, pMax = 0, tDone = null;
+  const perRoll = [];
   for (const r of rows) {
     if (r.t < t0) continue;
     if (prev !== null) {
@@ -94,23 +96,27 @@ function rollMetrics(rows, t0) {
     prev = r.bank;
     if (Math.abs(r.ps) > Math.abs(pMax)) pMax = r.ps;
     betaMax = Math.max(betaMax, Math.abs(r.beta));
-    if (Math.abs(turned) >= 360) { tDone = r.t; break; }
+    if (Math.abs(turned) >= 360) {
+      if (tDone === null) tDone = r.t;
+      perRoll.push(betaMax); betaMax = 0; turned = 0;
+    }
   }
-  return { pMax, betaMax, tDone, turned };
+  return { pMax, betaMax: perRoll[0] ?? betaMax, perRoll, tDone, turned };
 }
 
 export function check7() {
-  const { rows, summary } = flyManoeuvre('roll', { kcas: 350, t: 4 });
+  // flown on through four rolls: the sideslip of each is printed, because it grows (8.7)
+  const { rows, summary } = flyManoeuvre('roll', { kcas: 350, t: 7 });
   const m = rollMetrics(rows, 0.5);
   const pass = inBand(m.pMax, 270, 330) && m.betaMax < 3 && m.tDone !== null;
   return { name: '7 full right stick, 1 g, 350 KCAS', pass,
-    text: `peak roll rate ${f(m.pMax, 0)} °/s, |β| max ${f(m.betaMax, 2)}° through 360° (done at ${m.tDone === null ? 'never' : f(m.tDone - 0.5, 2) + ' s'}), n_z ${f(summary.nzMin, 2)}–${f(summary.nzMax, 2)}` };
+    text: `peak roll rate ${f(m.pMax, 0)} °/s, |β| max ${f(m.betaMax, 2)}° through 360° (done at ${m.tDone === null ? 'never' : f(m.tDone - 0.5, 2) + ' s'}), then ${m.perRoll.slice(1).map((b) => f(b, 2) + '°').join(', ')} on the rolls after; n_z ${f(summary.nzMin, 2)}–${f(summary.nzMax, 2)}, α to ${f(summary.alphaMax, 1)}°` };
 }
 
 export function check8() {
   const { rows, summary } = flyManoeuvre('roll', { h: 500, kcas: 120, t: 4 });
   const m = rollMetrics(rows, 0.5);
-  const pass = inBand(Math.abs(m.pMax), 80, 140) && summary.alphaMax <= 25 && m.betaMax < 5;
+  const pass = inBand(Math.abs(m.pMax), 80, 140) && summary.alphaMax <= 25 && m.betaMax < 3;
   return { name: '8 full right stick at 1 g, 20° AoA (120 KCAS, sea level)', pass,
     text: `α at start ${f(rows[0].alpha, 1)}°, peak roll rate ${f(m.pMax, 0)} °/s, α max ${f(summary.alphaMax, 1)}°, |β| max ${f(m.betaMax, 2)}°, rolled ${f(m.turned, 0)}°` };
 }
