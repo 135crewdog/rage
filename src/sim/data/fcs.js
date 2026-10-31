@@ -48,8 +48,10 @@ export const ROLL = {
 };
 
 export const YAW = {
-  // aileron-rudder interconnect, deg rudder per deg aileron, by α
-  ariAlpha: [0, 10, 20, 30], ariGain: [0, 0.45, 1.2, 1.8],   // 1.5× the starting shape
+  // aileron-rudder interconnect: on top of the tables' cancellation of the
+  // aileron's own yaw (ariFromTables in fcs.js), this tuned rise with α gives
+  // the yaw a roll about the velocity vector needs; deg rudder per deg aileron
+  ariAlpha: [0, 10, 20, 30], ariGain: [0, 0.54, 1.44, 2.16],   // 1.8× the starting shape (1.5× before the tables' term was separated out)
   ariMach: [0.6, 1.2],                    // full below, zero above
   ariOffAlpha: 35,                        // deg
   Kyd: 1.0,                               // deg per deg/s of washed-out stability-axis yaw rate
