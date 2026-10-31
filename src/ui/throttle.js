@@ -1,22 +1,29 @@
 // The throttle: a slim vertical slider on the left edge, driven by pointer
 // events with pointer capture, keeping its value when released. A detent at
-// MIL (0.77): the thumb has to cross a small gap to enter afterburner.
+// MIL (0.77): a finger anywhere in a band just below the mark, or in the gap
+// above it, puts the throttle exactly at MIL with the thumb on the mark, so
+// a pilot reaching for MIL gets MIL; the gap above has to be crossed to enter
+// afterburner. The dry range below the band is stretched a little so every
+// dry power setting is still reachable.
 
 import { MIL_THROTTLE } from '../sim/engine.js';
 
-const GAP = 0.12;   // fraction of the track the thumb must cross past MIL (doubled after the first flights)
+const GAP = 0.12;    // fraction of the track the thumb must cross past MIL (doubled after the first flights)
+const SNAP = 0.06;   // fraction of the track below MIL that reads as MIL: about a fingertip's uncertainty
+const DRY = MIL_THROTTLE - SNAP;   // the track below the detent, which carries the whole dry range 0..MIL
 
 // Pointer position along the track (0 bottom .. 1 top) → throttle 0..1.
 export function throttleFromPosition(pos) {
   const p = Math.max(0, Math.min(1, pos));
-  if (p <= MIL_THROTTLE) return p;
+  if (p <= DRY) return p / DRY * MIL_THROTTLE;
   if (p <= MIL_THROTTLE + GAP) return MIL_THROTTLE;
   return MIL_THROTTLE + (p - MIL_THROTTLE - GAP) / (1 - MIL_THROTTLE - GAP) * (1 - MIL_THROTTLE);
 }
 
-// The inverse, for drawing the thumb.
+// The inverse, for drawing the thumb: at MIL it sits on the mark.
 export function positionFromThrottle(t) {
-  if (t <= MIL_THROTTLE) return t;
+  if (t < MIL_THROTTLE) return t / MIL_THROTTLE * DRY;
+  if (t === MIL_THROTTLE) return MIL_THROTTLE;
   return MIL_THROTTLE + GAP + (t - MIL_THROTTLE) / (1 - MIL_THROTTLE) * (1 - MIL_THROTTLE - GAP);
 }
 
