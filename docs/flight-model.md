@@ -62,7 +62,7 @@ The simulation is plain JavaScript with **no DOM, no three.js and no browser API
 
 | Module | Job |
 |---|---|
-| `atmosphere` | The book's ADC routine: density, temperature, pressure, Mach, q̄ from (V, h). |
+| `atmosphere` | The book's ADC routine: density, temperature, pressure, Mach, q̄ from (V, h). Within 0.3 % of the standard atmosphere to 36,000 ft; above that the book keeps its power law while the temperature freezes, so density reads 3.5 % high at 40,000 ft and 9 % at 50,000 ft. The drag rise of 5.2 was calibrated against exactly this, so the 40,000 ft speed check is self-consistent. |
 | `aero` | Table lookups and the total coefficients, exactly as `docs/f16-data.md` section 3, plus the transonic drag rise of section 5.2. |
 | `engine` | Throttle gearing, power lag, thrust tables (section 6). |
 | `actuators` | Surface lags, rate limits, position limits (section 7). |
@@ -112,7 +112,7 @@ Rigid body, 6 degrees of freedom, constant mass, flat non-rotating earth. Use th
 
 **Centre of gravity.** xcg = 0.35 c̄, the data's reference. The jet is slightly unstable there; that is correct.
 
-**Outside the data.** The tables cover α −10..45° and β ±30°; beyond that they extrapolate linearly from the end segment, as the book does. The FCS keeps the jet well inside (section 8.5). Hard pushes are expected to reach α of −10 to −12° (a −3 g push at 250 KCAS needs about −11°); that's fine. Beyond α < −15° or α > 45°, the simulation must stay numerically stable and set an `outOfEnvelope` flag the debug overlay shows. It must never produce NaN.
+**Outside the data.** The tables cover α −10..45° and β ±30°; beyond that they extrapolate linearly from the end segment, as the book does, as far as α −30..60° and β ±45°, where the lookup angles are held: far outside the data the extrapolation has no meaning and can grow without bound. The FCS keeps the jet well inside (section 8.5). Hard pushes are expected to reach α of −10 to −12° (a −3 g push at 250 KCAS needs about −11°); that's fine. Beyond α < −15° or α > 45°, the simulation must stay numerically stable and set an `outOfEnvelope` flag the debug overlay shows. It must never produce NaN.
 
 **Ground.** When the jet is below the ground the flight ends in a crash state: `crashed(x, groundFt)`, true when h is at or below the ground's height. The model itself knows only sea level (the default, h ≤ 0); the app passes the terrain's height under the jet, read from the same heightmap the ground is drawn from. There is no landing gear in this model.
 
@@ -277,6 +277,8 @@ Tune the gains to these across the envelope (at least sea level, 15,000 ft and 3
 
 Use the trim solver plus finite-difference linearisation to get the open-loop dynamics at each point. Explain each tuning decision in plain words in the pull request; the owner wants to understand them.
 
+**Measured after the review (milestone 3).** `tests/flight/modes.test.js` prints the pitch response at fifteen points and asserts a guard, not the targets above, because the targets are not all reachable with this structure. A +1 g stick step reaches 90 % in 2.1–2.6 s at 200 KCAS, 1.4–1.7 s at 300, 1.1–1.3 s at 400 and 0.8–1.0 s at 600, with an equivalent short period of 1.1–1.3 rad/s at 200 KCAS rising to 3.6–4.7 at 600; at 30,000 ft the overshoot is 11–14 % at 300–400 KCAS. The pitch gains sit on a trade-off edge: raising Kp and Ki to 4 and 16 gains 0.3 s at 200 KCAS and costs the limiter's hold at 109 KCAS (test 5b, α to 26.4°) and 16 % overshoot at altitude; raising Kq or Kα for the damping at altitude slows the 9 g onset below test 3's 1.5 s. The gain ceiling is not the cause (the schedule only reaches it below 150 psf, under 210 KCAS); the g a degree of stabilator gives falls with q̄, and the 4–6 rad/s figure is a mid-speed one (MIL-F-8785C's Level 1 band at 200 KCAS starts near 1.4 rad/s). The slow g loop also shows in a full-stick roll with the pitch stick centred: inertia coupling pitches the jet up, n_z rises to 2.4 g and α to 4.6° by the second roll, and sideslip grows with it, 2.5° through the first 360° and 3.7°, 4.6°, 5.1° through the next three (test 7 prints them); at 600 KCAS, where the g loop is quick, it holds at 2.4° roll after roll. No yaw or roll gain change in 8.3–8.4's structure cuts that growth without taking the dutch roll's damping to the floor of the test (Kny 30: 2.4°→3.9°, ζ 0.20 at 600 KCAS). Whether to amend the pitch targets to speed-scheduled bands, or to add a structure the public sources do not describe, is the owner's call.
+
 ## 9. Air data for the HUD
 
 From the atmosphere module (pressure p, temperature, density), with sea-level values p0 and a0 taken from the same atmosphere at h = 0 so that calibrated and true airspeed agree at sea level:
@@ -365,9 +367,9 @@ Each test flies the full simulation (FCS, actuators, engine) from a trimmed 1 g 
 | 5 | Full aft stick at 200 KCAS | peak n_z 2.7–3.5; never above 4; α never above 26°; from 1.5 s on, α 22–25.5° |
 | 6 | Full forward stick at 450 KCAS | n_z reaches −3 ± 0.3, never below −3.5 |
 | 7 | Full right stick, 1 g, 350 KCAS | peak roll rate 270–330°/s; |β| < 3° throughout a 360° roll |
-| 8 | Full right stick at 1 g and about 20° AoA (about 120 KCAS, sea level) | roll rate is aileron-limited, 80–140°/s; α stays at or below 25°; |β| < 5° |
+| 8 | Full right stick at 1 g and about 20° AoA (about 120 KCAS, sea level) | roll rate is aileron-limited, 80–140°/s; α stays at or below 25°; |β| < 3° (as 8.7) |
 | 9 | Stick released in a 60° bank | bank holds within 8° over 10 s; nose drops (no bank compensation) |
-| 10 | Any input sequence, including random stick for 60 s, at any speed from 100 to 700 KCAS | no NaN; α stays below 32° (the backstop engages at 30°) |
+| 10 | Any input sequence, including random stick, at any speed from 100 to 700 KCAS: sixteen flights of 20 s from eight starts between 110 and 700 KCAS and 5,000 and 30,000 ft (a random pilot flies into the ground within about 45 s from any height, so one 60 s flight cannot be flown) | no NaN; α stays below 32° (the backstop engages at 30°) |
 | 11 | Stick released at a 1 g trim past the limiter onset (105 and 115 KCAS, α 25° and 21°) | the limiter unloads: α below 15° within 2 s; n_z never below 0; the stabilator within ±5° from 3 s on. (The pilot's command is floored at 0 g this slow; the limiter's subtraction comes after the floor, as in the jet, so the law may command below it to bring α down.) |
 
 Also unit-test the roll limiter on its own: pmax = 279°/s at α 5° and q̄ 167 psf; 168°/s at α 25° and q̄ 38.5 psf; 88°/s at α 25°, q̄ 38.5 psf and el +25°.
