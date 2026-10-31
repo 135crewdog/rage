@@ -99,7 +99,7 @@ Every value comes from `src/sim/` air data (`docs/flight-model.md` section 9). T
 
 Minimal, and as unobtrusive as the controls of a real cockpit:
 
-- **Throttle**: a slim vertical slider along the left edge, inside the safe area and clear of the bottom edge, where an upward swipe leaves the app. Pointer events with pointer capture; it keeps its value when released. A detent at MIL: the thumb has to cross a small gap to enter afterburner.
+- **Throttle**: a slim vertical slider along the left edge, inside the safe area and clear of the bottom edge, where an upward swipe leaves the app. Pointer events with pointer capture; it keeps its value when released. A detent at MIL: a finger a little under the MIL mark or in the gap above it puts the throttle exactly at MIL with the thumb on the mark, and the gap has to be crossed to enter afterburner.
 - **Stick indicator**: a small, faint cross in a corner showing where the tilt is, inside a square for full deflection. It shows when the stick is past what the limiter allows, and when the controls need recentering.
 - **Pause button**: small, in a top corner.
 

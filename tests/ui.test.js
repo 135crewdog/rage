@@ -6,14 +6,21 @@ import { apexFor } from '../src/hud/hud.js';
 
 const near = (a, b, tol) => assert.ok(Math.abs(a - b) <= tol, `${a} vs ${b}`);
 
-test('the throttle has a detent at MIL: a gap to cross before afterburner', () => {
+test('the throttle has a detent at MIL: a band below the mark and a gap above it both read MIL', () => {
   assert.equal(throttleFromPosition(0), 0);
-  near(throttleFromPosition(0.5), 0.5, 1e-12);
   near(throttleFromPosition(MIL_THROTTLE), MIL_THROTTLE, 1e-12);
+  near(throttleFromPosition(MIL_THROTTLE - 0.05), MIL_THROTTLE, 1e-12);   // a little under the mark: snapped to MIL
   near(throttleFromPosition(MIL_THROTTLE + 0.08), MIL_THROTTLE, 1e-12);   // inside the gap: still MIL
-  assert.ok(throttleFromPosition(MIL_THROTTLE + 0.13) > MIL_THROTTLE);  // past it: afterburner
+  assert.ok(throttleFromPosition(MIL_THROTTLE - 0.07) < MIL_THROTTLE - 0.01, 'below the band: dry power');
+  assert.ok(throttleFromPosition(MIL_THROTTLE + 0.13) > MIL_THROTTLE, 'past the gap: afterburner');
   near(throttleFromPosition(1), 1, 1e-12);
-  for (const t of [0, 0.3, MIL_THROTTLE, 0.8, 0.95, 1]) near(throttleFromPosition(positionFromThrottle(t)), t, 1e-12);
+  // the dry range is stretched over the track below the band, so every setting is reachable and the mapping is continuous
+  near(throttleFromPosition(0.5), 0.5 * MIL_THROTTLE / (MIL_THROTTLE - 0.06), 1e-12);
+  near(throttleFromPosition(MIL_THROTTLE - 0.06), MIL_THROTTLE, 1e-12);
+  for (const t of [0, 0.3, 0.76, MIL_THROTTLE, 0.8, 0.95, 1]) near(throttleFromPosition(positionFromThrottle(t)), t, 1e-12);
+  // at MIL the thumb sits on the mark, which is at MIL's own height on the track
+  near(positionFromThrottle(MIL_THROTTLE), MIL_THROTTLE, 1e-12);
+  assert.ok(positionFromThrottle(MIL_THROTTLE - 1e-9) < MIL_THROTTLE - 0.05, 'just under MIL the thumb is below the band');
 });
 
 test('the ladder shows the zenith and nadir symbols once its window reaches straight up or down', () => {
