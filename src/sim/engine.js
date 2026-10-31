@@ -29,8 +29,8 @@ export function pdot(p3, p1) {
 // Table inputs clamp to 0..50,000 ft and Mach 0..2.2; within Mach 1.0..2.2
 // the book's linear extrapolation in Mach is kept. The drag rise in aero.js
 // is calibrated against exactly this thrust.
-export const THRUST_ALT_MAX = 50000;
-export const THRUST_MACH_MAX = 2.2;
+const THRUST_ALT_MAX = 50000;
+const THRUST_MACH_MAX = 2.2;
 
 export function thrust(pow, alt, mach) {
   const h = alt < 0 ? 0 : alt > THRUST_ALT_MAX ? THRUST_ALT_MAX : alt;

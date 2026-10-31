@@ -12,7 +12,7 @@
 
 export const METRES_PER_FOOT = 0.3048;
 
-// Position: NED (ft) → world (m). h is height above the ground.
+// Position: NED (ft) → world (m). h is altitude above the sea.
 export function positionToWorld(north, east, h) {
   return [east * METRES_PER_FOOT, h * METRES_PER_FOOT, -north * METRES_PER_FOOT];
 }

@@ -12,6 +12,7 @@
 // Metres; world x east, z south, y up.
 
 import * as THREE from 'three';
+import { NOISE_GLSL } from './world.js';
 
 const LEVELS = 7;      // 0.96, 1.9, 3.8, 7.7, 15, 31, 61 km across: the outer edge is 29 km off, past the fog's end at 24 km
 const N = 96;          // cells per side of every level
@@ -107,11 +108,7 @@ const fragmentShader = (patches, lakes) => `${heightGlsl(patches)}${colourGlsl(p
   uniform vec4 lakeBox[${lakes}];     // x0, z0, x1, z1
   uniform float lakeLevel[${lakes}];  // m above the sea
   varying vec3 wp, rp;
-  float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
-  float noise(vec2 p) {
-    vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
-    return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y);
-  }
+  ${NOISE_GLSL}
   void main() {
     // the slope from the heightmaps at a fixed 30 m step, the same at every level; the point's patch weights serve all four reads
     float d = 30.0;
@@ -122,7 +119,7 @@ const fragmentShader = (patches, lakes) => `${heightGlsl(patches)}${colourGlsl(p
     float slope = 1.0 - n.y;
     // the ground's colour is the imagery's, the patches blended in with the same weights as their heights
     vec3 c = colourWith(wp.xz, w);
-    // a grain at two scales so the ground reads as moving at low level, lighter than the old painted ground's, fading before it aliases
+    // a light grain at two scales so the ground reads as moving at low level, fading before it aliases
     float dist = length(rp);
     float grain = 0.6 * noise(wp.xz / 50.0) + 0.4 * noise(wp.xz / 7.0);
     c *= mix(0.9 + 0.1 * grain, 0.95, smoothstep(1500.0, 6000.0, dist));
@@ -133,13 +130,13 @@ const fragmentShader = (patches, lakes) => `${heightGlsl(patches)}${colourGlsl(p
     // survey recorded the lakes full, as flat ground; this paints them.
     // The height is read from the survey, not taken from the mesh: on the
     // coarse outer rings the mesh is interpolated between posts that may be
-    // on the land, and a shore would come and go with distance.
+    // on the land, and a shore would come and go with distance. Read only
+    // inside a lake's box: it is four more fetches per patch.
     float water = 0.0;
-    float hs = heightWith(wp.xz, w);
     for (int i = 0; i < ${lakes}; i++) {
       vec4 b = lakeBox[i];
       if (wp.x > b.x && wp.x < b.z && wp.z > b.y && wp.z < b.w) {
-        float dh = abs(hs - lakeLevel[i]);
+        float dh = abs(heightWith(wp.xz, w) - lakeLevel[i]);
         water = max(water, (1.0 - smoothstep(1.0, 2.5, dh)) * (1.0 - smoothstep(0.003, 0.010, slope)));
       }
     }
@@ -186,8 +183,7 @@ function levelGeometry(withHole) {
     }
   }
   geo.setIndex(variants[0]);
-  geo.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 1e9);
-  return { geo, variants };
+  return { geo, variants };   // never frustum-culled: the levels always surround the camera
 }
 
 // The imagery: filtered, mipmapped and anisotropic, since the ground is seen at a grazing angle.
@@ -197,7 +193,7 @@ function colourTexture(image, anisotropy) {
   texture.generateMipmaps = true;
   texture.anisotropy = anisotropy;
   texture.flipY = false;
-  texture.colorSpace = THREE.NoColorSpace;   // its values are used as they are, like the painted colours were
+  texture.colorSpace = THREE.NoColorSpace;   // its values are used as they are
   texture.needsUpdate = true;
   return texture;
 }

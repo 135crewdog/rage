@@ -57,5 +57,5 @@ export function createThrottle(root, initial, onChange) {
   root.addEventListener('pointercancel', end);
 
   render();
-  return { get value() { return value; }, set };
+  return { set };
 }

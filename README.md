@@ -73,7 +73,7 @@ Add `?debug=1` to the URL and a small panel shows the raw sensor angles (β, γ,
 
 ## Version bumps
 
-One version string lives in two places: `APP_VERSION` in `src/version.js` (shown in Settings and in the user guide) and `VERSION` in `sw.js` (the cache name). Bump both with every change to anything the app serves, or phones keep the old copy. Add any new file the app loads to the list in `sw.js`. The service worker never updates itself mid-flight: a new version is offered on the start and pause screens.
+One version string lives in two places: `APP_VERSION` in `src/version.js` (shown in Settings and in the user guide) and `VERSION` in `sw.js` (the cache name). Bump both with every change to anything the app serves, or phones keep the old copy. Add any new file the app loads to the list in `sw.js`; `tests/app.test.js` checks the two versions agree and that every module under `src/` is listed. The service worker never updates itself mid-flight: a new version is offered on the start and pause screens.
 
 ## Icons
 

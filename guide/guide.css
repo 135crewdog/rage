@@ -18,7 +18,7 @@ body { -webkit-user-select: text; user-select: text; -webkit-touch-callout: defa
 .card h3 { margin: 6px 0 0; font-size: 15px; font-weight: 600; }
 .card a { color: var(--accent); text-decoration: none; }
 figure { margin: 4px 0 0; }
-figure img, figure svg { display: block; width: 100%; height: auto; border-radius: 8px; }
+figure img { display: block; width: 100%; height: auto; border-radius: 8px; }
 figure.portrait img { width: auto; max-height: 360px; margin: 0 auto; }
 figcaption { color: var(--text2); font-size: 13px; margin-top: 6px; }
 .foot { text-align: center; color: var(--text2); font-size: 13px; }

@@ -1,7 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { PLACES, DEFAULT_PLACE, placeNamed, airStartFor, START_AGL_FT } from '../src/places.js';
+import { PLACES, DEFAULT_PLACE, placeNamed, airStartFor, START_AGL_FT, BULLSEYE } from '../src/places.js';
+import { bullseyeText } from '../src/hud/hud.js';
 import { createProjection } from '../src/render/heightmap.js';
 import { Simulation } from '../src/sim/simulation.js';
 import { IX } from '../src/sim/dynamics.js';
@@ -50,17 +51,18 @@ test('places: the simulation takes the heading and position and is still trimmed
 });
 
 test('navigation: bearings and ranges in the flat world, and how the jet calls them', async () => {
-  const { bearingRange, callOf, bullseyeOf, nextPlace, createRoute, LOOP, STEP_NM } = await import('../src/places.js');
+  const { bearingRange, nextPlace, createRoute, LOOP, STEP_NM } = await import('../src/places.js');
   const o = { x: 0, z: 0 };
   near(bearingRange(o, { x: 0, z: -1852 }).bearing, 0, 1e-9, 'north'); near(bearingRange(o, { x: 0, z: -1852 }).range, 1, 1e-9, 'one mile');
   near(bearingRange(o, { x: 1852, z: 0 }).bearing, 90, 1e-9, 'east');
   near(bearingRange(o, { x: -1852, z: 1852 }).bearing, 225, 1e-9, 'south-west');
-  assert.equal(callOf({ bearing: 58.4, range: 47.2 }), '058 for 47');
-  assert.equal(callOf({ bearing: 359.6, range: 0.4 }), '000 for 0', 'rounds round the compass');
-  const calls = Object.fromEntries(PLACES.map((p) => [p.name, bullseyeOf(p, projection)]));
+  assert.equal(bullseyeText({ bearing: 58.4, range: 47.2 }), 'BE 058/47');
+  assert.equal(bullseyeText({ bearing: 359.6, range: 0.4 }), 'BE 000/0', 'rounds round the compass');
+  const be = projection.toWorld(BULLSEYE.lat, BULLSEYE.lon);
+  const calls = Object.fromEntries(PLACES.map((p) => [p.name, bearingRange(be, projection.toWorld(p.sight.lat, p.sight.lon))]));
   // from the Mormon Mesa VORTAC
   for (const [name, b, r] of [['Zion National Park', 65, 71], ['Bryce Canyon National Park', 64, 113], ['Lake Powell', 86, 135], ['Grand Canyon National Park', 111, 113], ['Nellis AFB', 229, 48]]) {
-    console.log(`  ${name}: bullseye ${callOf(calls[name])}`);
+    console.log(`  ${name}: ${bullseyeText(calls[name])}`);
     near(calls[name].bearing, b, 1.5, name); near(calls[name].range, r, 1.5, name);
   }
   assert.deepEqual(LOOP, ['Zion National Park', 'Bryce Canyon National Park', 'Lake Powell', 'Grand Canyon National Park', 'Nellis AFB']);

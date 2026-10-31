@@ -44,16 +44,6 @@ export function bearingRange(from, to) {
   return { bearing, range: Math.hypot(east, north) / METRES_PER_NM };
 }
 
-// "058 for 47": how the F-16 says a bearing and range.
-export function callOf({ bearing, range }) {
-  return `${String(Math.round(bearing) % 360).padStart(3, '0')} for ${Math.round(range)}`;
-}
-
-// A place's sight as the bullseye calls it.
-export function bullseyeOf(place, projection) {
-  return bearingRange(projection.toWorld(BULLSEYE.lat, BULLSEYE.lon), projection.toWorld(place.sight.lat, place.sight.lon));
-}
-
 // The route from a chosen place: `current` is the next place on the loop,
 // `update(xz)` steps it on when the jet passes within STEP_NM of its sight.
 export function createRoute(startName, projection) {

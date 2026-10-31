@@ -32,9 +32,6 @@ function rightOf(headingDeg, pitchDeg) {
   return [v[0] / m, v[1] / m, v[2] / m];
 }
 
-// Which of the two apex symbols the ladder's window has reached, if either:
-// the zenith when straight up is within LADDER_RANGE of the nose, the nadir
-// when straight down is.
 export const RADAR_BELOW_FT = 1500;   // the F-16 HUD's AUTO mode shows radar altitude below this
 
 // What the altitude window shows: barometric altitude, or below RADAR_BELOW_FT
@@ -65,6 +62,14 @@ export function relativeBearing(headingDeg, bearingDeg) {
   return r;
 }
 
+// The jet's own bearing and range from the bullseye, as the HUD writes it: "BE 229/48".
+export function bullseyeText({ bearing, range }) {
+  return `BE ${String(Math.round(bearing) % 360).padStart(3, '0')}/${Math.round(range)}`;
+}
+
+// Which of the two apex symbols the ladder's window has reached, if either:
+// the zenith when straight up is within LADDER_RANGE of the nose, the nadir
+// when straight down is.
 export function apexFor(pitchDeg) {
   if (pitchDeg >= 90 - LADDER_RANGE) return 'zenith';
   if (pitchDeg <= -90 + LADDER_RANGE) return 'nadir';
@@ -212,11 +217,13 @@ export function createHud(canvas) {
     // flight path marker: where the jet is actually going. Held at the HUD's
     // edge and dashed when it leaves the frame, as the jet's is; while looking
     // around it is simply where it is, in view or not.
+    const frame = { left: left + 30, right: right - 30, top: top + 60, bottom: bottom - 70 };   // where a symbol is held at the HUD's edge
+    const within = (p) => p.visible && p.x >= frame.left && p.x <= frame.right && p.y >= frame.top && p.y <= frame.bottom;
     const f = project(velocity);
-    const inFrame = f.visible && f.x >= left + 30 && f.x <= right - 30 && f.y >= top + 60 && f.y <= bottom - 70;
+    const inFrame = within(f);
     let fpm = null;
     if (f.visible && (inFrame || !looking)) {
-      const fx = Math.max(left + 30, Math.min(right - 30, f.x)), fy = Math.max(top + 60, Math.min(bottom - 70, f.y));
+      const fx = Math.max(frame.left, Math.min(frame.right, f.x)), fy = Math.max(frame.top, Math.min(frame.bottom, f.y));
       fpm = { x: fx, y: fy };
       at.fpm = { x: fx - 20, y: fy };
       dashed(!inFrame);
@@ -234,8 +241,7 @@ export function createHud(canvas) {
     // marker with a tail pointing the way to turn
     if (nav) {
       const s = project(nav.steer.dir);
-      const steerInFrame = s.visible && s.x >= left + 30 && s.x <= right - 30 && s.y >= top + 60 && s.y <= bottom - 70;
-      if (steerInFrame) {
+      if (within(s)) {
         stroke(() => { ctx.moveTo(s.x, s.y - 9); ctx.lineTo(s.x + 9, s.y); ctx.lineTo(s.x, s.y + 9); ctx.lineTo(s.x - 9, s.y); ctx.closePath(); });
         at.steerpoint = { x: s.x + 9, y: s.y, kind: 'diamond' };
       } else {
@@ -266,7 +272,7 @@ export function createHud(canvas) {
     text(`M ${air.mach.toFixed(2)}`, left, rows[2], 'left', 14);
     text(power.label === 'AB' ? `AB ${power.percent}%` : power.label === 'DRY' ? `${power.percent}%` : power.label, left, rows[3], 'left', 14);
     if (nav) {
-      text(`BE ${String(Math.round(nav.bullseye.bearing) % 360).padStart(3, '0')}/${Math.round(nav.bullseye.range)}`, left, bottom, 'left', 14);
+      text(bullseyeText(nav.bullseye), left, bottom, 'left', 14);
       text(`${nav.steer.range.toFixed(1)} > ${nav.steer.name}`, right, bottom, 'right', 14);
       at.bullseye = { x: left, y: bottom }; at.range = { x: right, y: bottom };
     }
