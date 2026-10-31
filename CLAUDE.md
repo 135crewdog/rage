@@ -89,7 +89,7 @@ The HUD is the cockpit's head-up display, drawn over the view the way a real fig
 - **Pitch ladder** with the horizon line, every 5° (dashed below the horizon), rolling with the jet. At straight up and straight down, the F-16's zenith symbol (an eight-pointed star with a tail) and nadir symbol (a hatched circle with a tail), upright on the screen.
 - **Flight path marker**: where the jet is actually going.
 - **Waterline**: where the nose points.
-- **g** (one decimal), **AoA** in degrees (one decimal), **Mach** (two decimals), and **power state**: IDLE, MIL, or AB with the afterburner percentage. The power state shows the engine, not the slider, so the spool-up lag is visible.
+- **g** (one decimal), **AoA** in degrees (one decimal), **Mach** (two decimals), and **power state**: IDLE, a percentage of MIL in dry power, MIL, or AB with the afterburner percentage. The power state shows the engine, not the slider, so the spool-up lag is visible.
 - **Steerpoint**: the next place on the loop (`src/places.js`), as the F-16's diamond on the sight when it is in the view, or its tadpole above the flight path marker with a tail pointing the way to turn when it isn't; the range in nautical miles and the place's name in the lower right. Passing within 2 nm steps to the next place.
 - **Bullseye**: the jet's own bearing and range from the bullseye, the Mormon Mesa VORTAC, in the lower left, as "BE 229/48".
 

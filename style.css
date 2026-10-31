@@ -5,7 +5,7 @@
 :root {
   --bg: #f2f2f7; --elev: #ffffff; --border: #c6c6c8; --text: #000000; --text2: #656569;
   --fill: #e5e5ea; --accent: #007aff; --accent-text: #ffffff;
-  --hud: #7cff4f;
+  --hud: #7cff4f;   /* the HUD's green, as in src/hud/hud.js */
   /* the safe-area insets as variables, so the HUD canvas can read them */
   --sat: env(safe-area-inset-top, 0px); --sar: env(safe-area-inset-right, 0px);
   --sab: env(safe-area-inset-bottom, 0px); --sal: env(safe-area-inset-left, 0px);
@@ -36,7 +36,6 @@ button { font: inherit; color: inherit; -webkit-tap-highlight-color: transparent
 
 /* UI, inside the safe area */
 #controls { position: fixed; inset: 0; pointer-events: none; }
-#controls[hidden] { display: none; }
 .throttle {
   position: absolute; left: calc(env(safe-area-inset-left, 0px) + 10px);
   top: calc(env(safe-area-inset-top, 0px) + 56px); bottom: calc(env(safe-area-inset-bottom, 0px) + 40px);
@@ -66,8 +65,8 @@ button { font: inherit; color: inherit; -webkit-tap-highlight-color: transparent
 .stick.recenter .dot { background: rgba(255,255,255,0.4); }
 .stick.pulse { animation: stick-pulse 0.9s ease-out; }
 @keyframes stick-pulse {
-  0% { opacity: 1; box-shadow: 0 0 0 0 rgba(124,255,79,0.9); border-color: #7cff4f; }
-  100% { opacity: 0.6; box-shadow: 0 0 0 14px rgba(124,255,79,0); border-color: rgba(255,255,255,0.35); }
+  0% { opacity: 1; box-shadow: 0 0 0 0 color-mix(in srgb, var(--hud) 90%, transparent); border-color: var(--hud); }
+  100% { opacity: 0.6; box-shadow: 0 0 0 14px transparent; border-color: rgba(255,255,255,0.35); }
 }
 .btn.done { color: #30d158; }
 .pause {
@@ -84,7 +83,7 @@ button { font: inherit; color: inherit; -webkit-tap-highlight-color: transparent
 
 /* screens */
 #screens { position: fixed; inset: 0; }
-#screens:empty, #screens.clear { pointer-events: none; }
+#screens.clear { pointer-events: none; }
 .screen {
   position: absolute; inset: 0; display: flex; justify-content: center;
   background: var(--bg); color: var(--text);
@@ -131,7 +130,6 @@ a.btn { display: block; box-sizing: border-box; text-align: center; text-decorat
 .list button + button { border-top: 1px solid var(--border); }
 .list button[aria-checked="true"]::after { content: '✓'; color: var(--accent); font-weight: 600; }
 .update { font-size: 13px; color: var(--text2); text-align: center; }
-.update[hidden] { display: none; }
 
 /* short viewports, such as Safari in landscape with its toolbar: slimmer cards */
 @media (max-height: 440px) {

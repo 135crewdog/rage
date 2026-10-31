@@ -153,7 +153,7 @@ The book's model, `docs/f16-data.md` section 4:
 - **Thrust tables** by Mach (rows) and altitude (columns), idle, MIL and max. Read the orientation warning in the data file: getting rows and columns backwards fails the check case.
 - **Clamp the table inputs** to 0..50,000 ft and Mach 0..2.2. Within 1.0..2.2 the book's linear extrapolation in Mach is kept (it gives about 17,500 lb at Mach 2.0, 40,000 ft). The drag rise in 5.2 is calibrated against exactly this thrust, so changing the clamp or the extrapolation means recalibrating ΔCD.
 
-The throttle slider maps to throttle 0..1. Put a detent at 0.77 so the pilot can feel MIL. Pushing past it lights the afterburner. The HUD shows the current power state, not the slider position, so the spool lag is visible.
+The throttle slider maps to throttle 0..1. Put a detent at 0.77 so the pilot can feel MIL. Pushing past it lights the afterburner. The HUD shows the current power state (IDLE, a percentage of MIL in dry power, MIL, or AB with the afterburner percentage), not the slider position, so the spool lag is visible.
 
 ## 7. Actuators
 

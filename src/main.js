@@ -10,7 +10,7 @@ import * as Quat from './sim/quaternion.js';
 import { createWorld } from './render/world.js';
 import { createTerrain } from './render/terrain.js';
 import { decodeHeights, createSampler, createProjection } from './render/heightmap.js';
-import { placeNamed, airStartFor, createRoute, bearingRange, BULLSEYE } from './places.js';
+import { placeNamed, airStartFor, createRoute, bearingRange, BULLSEYE, START_AGL_FT } from './places.js';
 import { createAircraft } from './render/aircraft.js';
 import { createChaseCamera } from './render/camera.js';
 import { createLook, attachLook } from './input/look.js';
@@ -21,7 +21,7 @@ import { createScreens, loadPlace } from './ui/screens.js';
 import { upInScreen, tiltOf, stickFrom, smooth, MAPPING } from './input/tilt.js';
 import { APP_VERSION } from './version.js';
 
-const AIR_START = { h: 5000, kcas: 350 };   // h is above the ground at the chosen place once the terrain is known
+const AIR_START_KCAS = 350;   // the air start: START_AGL_FT above the ground at the chosen place, at this speed, trimmed
 const DEBUG = new URLSearchParams(location.search).get('debug') === '1';
 
 // ---- renderer, world, jet, camera, HUD ----
@@ -33,7 +33,6 @@ const camera = new THREE.PerspectiveCamera(60, 1, 1, 30000);
 const world = createWorld(scene);
 const jet = createAircraft();
 scene.add(jet);
-// Fly waits for the model: on a first visit it may still be downloading.
 // The ground: the region of terrain/region.json (see heightmap.js), a base
 // tile and an atlas of fine patches, and the satellite imagery on the same
 // grids. Each heightmap is drawn once to read its posts for the CPU sampler;
@@ -66,17 +65,13 @@ function groundFt(state) {
   if (!terrain) return 0;
   return terrain.sampler.heightAt(state[IX.EAST] * METRES_PER_FOOT, -state[IX.NORTH] * METRES_PER_FOOT) / METRES_PER_FOOT;
 }
-Promise.all([jet.ready, loadTerrain()]).then(([, t]) => {
-  terrain = t;
-  airStart();                                   // now 5,000 ft above the ground that is there
-  document.getElementById('fly').disabled = false;
-}, (e) => { console.error(e); document.getElementById('jet-error').hidden = false; });
 const chase = createChaseCamera(camera);
 const look = createLook();                  // look-around by dragging the view
 attachLook(view, look, () => mode === 'flying');
 const hud = createHud(document.getElementById('hud'));
 
 let sizedW = 0, sizedH = 0;
+let renderPending = true;     // draw the next frame even under an opaque screen: something changed
 function resize() {
   const w = view.clientWidth, h = view.clientHeight;
   if (!w || !h) return;
@@ -85,9 +80,9 @@ function resize() {
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
   hud.resize();
+  renderPending = true;
 }
-window.addEventListener('resize', resize);
-resize();
+resize();   // and on every resize event, through onRotate below
 // iOS can fire resize before the layout has settled, above all as a
 // home-screen app at launch and on rotation, which leaves the camera with the
 // wrong aspect; so every frame also checks the canvas's real size.
@@ -96,11 +91,11 @@ function resizeIfChanged() {
 }
 
 // ---- simulation and flight state ----
-let sim = new Simulation(AIR_START);
+let sim = null;               // made by airStart()
 let mode = 'start';           // start | flying | paused | crashed
 let carry = 0;
 let prevPose = null, pose = null;
-let throttleValue = sim.trimThrottle;
+let throttleValue = 0;        // the trim setting, from airStart()
 const stick = { pitch: 0, roll: 0 };
 // Portrait: the rotate screen, whatever else was asked for.
 const portrait = matchMedia('(orientation: portrait)');
@@ -129,18 +124,27 @@ function poseOf(state) {
 }
 
 let route = null;              // the steerpoints from the chosen place round the loop
+let bullseye = null;           // the bullseye's place in the world
 let nav = null;                // what the HUD shows of them this frame
 function airStart() {
-  const start = terrain ? airStartFor(placeNamed(place), terrain.projection, terrain.sampler) : { h: AIR_START.h };
-  sim = new Simulation({ ...start, kcas: AIR_START.kcas });
+  const start = terrain ? airStartFor(placeNamed(place), terrain.projection, terrain.sampler) : { h: START_AGL_FT };
+  sim = new Simulation({ ...start, kcas: AIR_START_KCAS });
   route = terrain ? createRoute(place, terrain.projection) : null;
+  bullseye = terrain ? terrain.projection.toWorld(BULLSEYE.lat, BULLSEYE.lon) : null;
   carry = 0;
   prevPose = pose = poseOf(sim.state);
   throttleValue = sim.trimThrottle;
   throttle.set(throttleValue);
   chase.reset();
+  renderPending = true;
 }
 airStart();
+// Fly waits for the jet and the ground: on a first visit they may still be downloading.
+Promise.all([jet.ready, loadTerrain()]).then(([, t]) => {
+  terrain = t;
+  airStart();                                   // now 5,000 ft above the ground that is there
+  screens.ready();
+}, (e) => { console.error(e); screens.failed(); });
 
 // ---- tilt input ----
 const tilt = { pitch: 0, roll: 0, confidence: 0, beta: 0, gamma: 0, alpha: 0, seen: false, at: 0 };
@@ -201,11 +205,11 @@ function fly() {
     ? DeviceOrientationEvent.requestPermission()
     : Promise.resolve('granted');
   keepAwake();
-  permission.then((state) => {
-    if (state !== 'granted') { screens.show('denied'); return; }
+  permission.then((state) => state === 'granted', () => false).then((granted) => {
+    if (!granted) { screens.show('denied'); return; }
     recenter();
     startFlight();
-  }).catch(() => screens.show('denied'));
+  });
 }
 
 function startFlight() {
@@ -319,14 +323,14 @@ function projectDirection([n, e, d]) {
 function navigation() {
   if (!route) return null;
   const x = sim.state;
-  const jet = { x: x[IX.EAST] * METRES_PER_FOOT, z: -x[IX.NORTH] * METRES_PER_FOOT };
-  route.update(jet);
+  const here = { x: x[IX.EAST] * METRES_PER_FOOT, z: -x[IX.NORTH] * METRES_PER_FOOT };
+  route.update(here);
   const sight = route.sight;
-  const { bearing, range } = bearingRange(jet, sight);
+  const { bearing, range } = bearingRange(here, sight);
   const dn = (-sight.z - x[IX.NORTH] * METRES_PER_FOOT), de = (sight.x - x[IX.EAST] * METRES_PER_FOOT);
   const dd = x[IX.H] * METRES_PER_FOOT - terrain.sampler.heightAt(sight.x, sight.z);
   const m = Math.hypot(dn, de, dd) || 1;
-  nav = { steer: { dir: [dn / m, de / m, dd / m], bearing, range, name: route.current.hud }, bullseye: bearingRange(terrain.projection.toWorld(BULLSEYE.lat, BULLSEYE.lon), jet) };
+  nav = { steer: { dir: [dn / m, de / m, dd / m], bearing, range, name: route.current.hud }, bullseye: bearingRange(bullseye, here) };
   return nav;
 }
 function velocityNed(state) {
@@ -363,6 +367,13 @@ function frame(now) {
       if (sim.crashed || sim.state[IX.H] <= groundFt(sim.state)) { crash(); break; }   // the ground that is there
     }
   }
+
+  // Under an opaque screen (start, settings, credits, rotate, denied) none
+  // of the view shows: draw once after a change, then rest. The pause and
+  // crash screens are translucent, so the view keeps drawing under them.
+  const opaque = screens.current !== null && screens.current !== 'pause' && screens.current !== 'crashed';
+  if (opaque && !renderPending) return;
+  renderPending = false;
 
   // render between the last two physics states
   lerped.position.lerpVectors(prevPose.position, pose.position, fraction);

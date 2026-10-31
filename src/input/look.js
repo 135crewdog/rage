@@ -17,7 +17,6 @@ export function createLook() {
   return {
     get yaw() { return yaw; },        // deg, positive looks left
     get pitch() { return pitch; },    // deg, positive looks up
-    get held() { return held; },
     get active() { return held || yaw !== 0 || pitch !== 0; },
     begin() { held = true; },
     drag(dx, dy) {                    // px moved since the last call, screen axes

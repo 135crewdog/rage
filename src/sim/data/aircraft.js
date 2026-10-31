@@ -3,8 +3,6 @@
 
 export const G = 32.17;            // ft/s², gravity
 export const RM = 1.57e-3;         // 1/slug, the book's inverse mass (m ≈ 636.9 slug, 20,490 lb)
-export const MASS = 1 / RM;        // slug
-export const WEIGHT = MASS * G;    // lbf
 export const S = 300;              // ft², wing area
 export const B = 30;               // ft, span
 export const CBAR = 11.32;         // ft, mean aerodynamic chord

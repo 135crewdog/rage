@@ -119,4 +119,4 @@ export function stepsFor(carry, elapsed, maxSteps = 8, dt = DT) {
   return { steps, carry: acc, fraction: acc / dt };
 }
 
-export { DT, tgear };
+export { DT };

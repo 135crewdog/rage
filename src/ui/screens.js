@@ -86,8 +86,11 @@ export function createScreens({ version, onFly, onResume, onRecenter, onFlyAgain
 
   return {
     show, hide, recentered,
-    get current() { return current; },
+    get current() { return current; },   // the screen showing, or null while flying
     // offer a waiting update on the start and pause screens only, never mid-flight
     offerUpdate(available) { for (const p of document.querySelectorAll('.update')) p.hidden = !available; },
+    // Fly waits for the jet and the ground to load; if they don't, the start screen says so
+    ready() { document.getElementById('fly').disabled = false; },
+    failed() { document.getElementById('load-error').hidden = false; },
   };
 }
