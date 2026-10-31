@@ -30,6 +30,7 @@ export function createThrottle(root, initial, onChange) {
   function render() {
     thumb.style.top = `${(1 - positionFromThrottle(value)) * 100}%`;
     root.classList.toggle('ab', value > MIL_THROTTLE + 1e-6);
+    root.setAttribute('aria-valuenow', String(Math.round(value * 100)));
   }
   function set(v) {
     value = Math.max(0, Math.min(1, v));

@@ -4,7 +4,7 @@
 // skipWaiting() on its own; the app offers the update on the start or pause
 // screen and posts "skip-waiting" when the pilot accepts.
 
-const VERSION = '0.1.29';   // the same value as APP_VERSION in src/version.js
+const VERSION = '0.1.30';   // the same value as APP_VERSION in src/version.js
 const CACHE = `rage-${VERSION}`;
 const FILES = [
   './',
@@ -57,6 +57,9 @@ const FILES = [
   './src/ui/throttle.js',
   './src/ui/stick.js',
   './src/ui/screens.js',
+  './guide/',
+  './guide/index.html',
+  './guide/guide.css',   // the guide's page; its pictures load when the phone is online
 ];
 
 self.addEventListener('install', (event) => {
@@ -81,6 +84,6 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
   if (url.origin !== self.location.origin) return;
   event.respondWith(
-    caches.match(event.request, { ignoreSearch: true }).then((hit) => hit || fetch(event.request)),
+    caches.open(CACHE).then((cache) => cache.match(event.request, { ignoreSearch: true })).then((hit) => hit || fetch(event.request)),
   );
 });
