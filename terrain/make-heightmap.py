@@ -1,8 +1,9 @@
 # Converts the elevation GeoTIFFs (SRTM, as OpenTopography serves them) into
 # the region the app draws: one coarse BASE tile and an ATLAS of fine PATCHES
-# at the places worth flying, every height a 16-bit value in the red and green
-# channels of a PNG, with region.json beside them holding the scales and
-# placings. A developer tool, run once; needs numpy and tifffile:
+# at the places worth flying, every height a 16-bit count of STEP metres above
+# the image's lowest point in the red and green channels of a PNG, with
+# region.json beside them holding the scales and placings. A developer tool,
+# run once; needs numpy and tifffile:
 #
 #   python terrain/make-heightmap.py base.tif zion.tif grand-canyon.tif bryce.tif page.tif las-vegas.tif terrain/
 #
@@ -21,6 +22,7 @@ ORIGIN = (37.19, -112.99)        # lat, lon of the world origin: Springdale, at 
 LAT0 = 36.9                      # the projection's latitude: longitude metres are true here
 M_LAT = 111132.0                 # metres per degree of latitude
 M_LON = 111320.0 * math.cos(math.radians(LAT0))
+STEP = 0.5                       # m per count: SRTM's own accuracy is several metres, and the low bits of a finer step are noise that compresses badly
 BLEND = 3000.0                   # m: a patch blends into the base over this band inside its edge
 FADE = 10000.0                   # m: the base eases to one flat height over this band inside its edge
 BASE_WIDTH = 2048                # posts across the base tile; its height follows the box
@@ -78,12 +80,32 @@ def resample(dem, geo, xs, zs):
         z = np.where(np.isnan(z), np.nanmin(z), z)
     return z
 
-def quantise(z, lo, hi):
-    return np.round((z - lo) / (hi - lo) * 65535).astype(np.uint16)
+# Heights to counts of STEP above lo; the readers scale by (max − min) / 65535, so max is lo + 65535 × STEP.
+def quantise(z, lo):
+    return np.clip(np.round((z - lo) / STEP), 0, 65535).astype(np.uint16)
 
+def top(lo):
+    return lo + 65535 * STEP
+
+# An 8-bit RGB PNG with each row under the one of PNG's five filters that
+# leaves the smallest residue, the usual heuristic: a third smaller than
+# unfiltered rows for this kind of data. Three bytes per pixel.
 def png(q):
     rgb = np.zeros((q.shape[0], q.shape[1], 3), np.uint8); rgb[..., 0] = q >> 8; rgb[..., 1] = q & 255
-    raw = b''.join(b'\x00' + rgb[y].tobytes() for y in range(rgb.shape[0]))
+    rows = rgb.reshape(q.shape[0], -1).astype(np.int16)
+    def shifted(r): return np.concatenate([np.zeros(3, np.int16), r[:-3]])
+    def paeth(a, b, c):
+        p = a + b - c; pa, pb, pc = abs(p - a), abs(p - b), abs(p - c)
+        return np.where((pa <= pb) & (pa <= pc), a, np.where(pb <= pc, b, c))
+    out = []; prev = np.zeros_like(rows[0])
+    for row in rows:
+        left, upleft = shifted(row), shifted(prev)
+        candidates = [row, row - left, row - prev, row - ((left + prev) >> 1), row - paeth(left, prev, upleft)]
+        residues = [(c & 255).astype(np.uint8) for c in candidates]
+        best = min(range(5), key=lambda i: int(np.abs(residues[i].astype(np.int8).astype(np.int16)).sum()))
+        out.append(bytes([best]) + residues[best].tobytes())
+        prev = row
+    raw = b''.join(out)
     def chunk(t, d): return struct.pack('>I', len(d)) + t + d + struct.pack('>I', zlib.crc32(t + d) & 0xffffffff)
     return b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', struct.pack('>IIBBBBB', rgb.shape[1], rgb.shape[0], 8, 2, 0, 0, 0)) + chunk(b'IDAT', zlib.compress(raw, 9)) + chunk(b'IEND', b'')
 
@@ -101,10 +123,10 @@ xs = x_west + post * np.arange(BASE_WIDTH); zs = z_north + post * np.arange(heig
 base = resample(dem, geo, xs, zs)
 border = np.concatenate([base[0], base[-1], base[:, 0], base[:, -1]])
 flat = float(round(border.mean()))
-lo, hi = float(np.floor(base.min())), float(np.ceil(base.max()))
-open(os.path.join(out, 'base.png'), 'wb').write(png(quantise(base, lo, hi)))
-meta_base = dict(image='base.png', w=BASE_WIDTH, h=height, post=round(post, 3), x0=round(x_west, 1), z0=round(z_north, 1), min=lo, max=hi, flat=flat)
-print(f'base: {BASE_WIDTH} x {height} posts every {post:.1f} m, heights {lo:.0f}..{hi:.0f} m, flat edge height {flat:.0f} m')
+lo = float(np.floor(base.min()))
+open(os.path.join(out, 'base.png'), 'wb').write(png(quantise(base, lo)))
+meta_base = dict(image='base.png', w=BASE_WIDTH, h=height, post=round(post, 3), x0=round(x_west, 1), z0=round(z_north, 1), min=lo, max=top(lo), flat=flat)
+print(f'base: {BASE_WIDTH} x {height} posts every {post:.1f} m, heights {lo:.0f}..{base.max():.0f} m, flat edge height {flat:.0f} m')
 
 # The patches: squares in world metres about their centres, into the atlas.
 atlas = np.zeros((ATLAS[1], ATLAS[0]), np.float64)
@@ -120,9 +142,9 @@ for k, ((name, lat, lon, side), src) in enumerate(zip(PATCHES, srcs[1:])):
     patches.append(dict(name=name, px=px, py=py, size=PATCH, post=round(p, 3), x0=round(xs[0], 1), z0=round(zs[0], 1), centre=[lat, lon]))
     zs_all.append(z)
     print(f'  {name}: {side / 1000:.0f} km, posts every {p:.1f} m, heights {z.min():.0f}..{z.max():.0f} m, at atlas ({px}, {py})')
-lo, hi = float(np.floor(min(z.min() for z in zs_all))), float(np.ceil(max(z.max() for z in zs_all)))
+lo = float(np.floor(min(z.min() for z in zs_all)))
 atlas[atlas == 0] = lo
-open(os.path.join(out, 'places.png'), 'wb').write(png(quantise(atlas, lo, hi)))
+open(os.path.join(out, 'places.png'), 'wb').write(png(quantise(atlas, lo)))
 lakes = []
 for name, level, (south, north, west, east) in LAKES:
     x0, z0 = world(north, west); x1, z1 = world(south, east)
@@ -130,8 +152,11 @@ for name, level, (south, north, west, east) in LAKES:
 meta = dict(
     name='Zion to Las Vegas, SRTM 3 arc-second base with 1 arc-second patches',
     origin=list(ORIGIN), lat0=LAT0, mLat=M_LAT, mLon=round(M_LON, 3), blend=BLEND, fade=FADE,
-    base=meta_base, atlas=dict(image='places.png', w=ATLAS[0], h=ATLAS[1], min=lo, max=hi), patches=patches, lakes=lakes,
+    base=meta_base, atlas=dict(image='places.png', w=ATLAS[0], h=ATLAS[1], min=lo, max=top(lo)), patches=patches, lakes=lakes,
 )
+# the imagery's entry, written by make-imagery.py, is kept
+previous = os.path.join(out, 'region.json')
+if os.path.exists(previous) and 'colour' in json.load(open(previous)): meta['colour'] = json.load(open(previous))['colour']
 json.dump(meta, open(os.path.join(out, 'region.json'), 'w'))
 for f in ('base.png', 'places.png', 'region.json'):
     print(f'wrote {f}: {os.path.getsize(os.path.join(out, f)) / 1e6:.2f} MB')
