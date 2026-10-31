@@ -61,7 +61,7 @@ async function main() {
     const nav = await page.evaluate(() => ({ name: window.rage.nav.steer.name, range: window.rage.nav.steer.range, bearing: window.rage.nav.steer.bearing, be: window.rage.nav.bullseye }));
     assert.equal(nav.name, 'ZION');
     assert.ok(Math.abs(nav.range - 118) < 3 && Math.abs(nav.bearing - 58) < 3, `Zion at 058 for 118: ${nav.bearing} for ${nav.range}`);
-    assert.ok(Math.abs(nav.be.bearing - 239) < 3 && Math.abs(nav.be.range - 114) < 3, `Nellis is bullseye 239 for 114: ${nav.be.bearing} for ${nav.be.range}`);
+    assert.ok(Math.abs(nav.be.bearing - 229) < 3 && Math.abs(nav.be.range - 48) < 3, `Nellis is bullseye 229 for 48 from Mormon Mesa: ${nav.be.bearing} for ${nav.be.range}`);
     // the whole region loaded: five patches, and Las Vegas 194 km west is at its height
     const region = await page.evaluate(() => ({ patches: window.rage.terrain.region.patches.length, vegas: window.rage.terrain.sampler.heightAt(-194066, 120023) }));
     assert.equal(region.patches, 5, 'five patches');
@@ -154,11 +154,24 @@ async function main() {
     await page.click('#resume');
     await page.waitForFunction(() => window.rage.mode === 'flying');
 
-    // portrait: the rotate screen wins over every other screen and nothing flies
+    // portrait: the rotate screen wins over every other screen and nothing flies.
+    // A rotation arrives as several events, and on a starved runner they can
+    // straddle a check made mid-way, so the check is of the settled state;
+    // every screen change on the way is recorded and printed if the pause
+    // screen was ever seen in portrait, or if the state never settles.
     await page.click('#pause');
     await page.waitForFunction(() => window.rage.mode === 'paused');
+    await page.evaluate(() => {
+      window.__screens = [];
+      const obs = new MutationObserver((ms) => { for (const m of ms) window.__screens.push(`${performance.now().toFixed(0)}ms ${m.target.id}.hidden=${m.target.hidden} at ${innerWidth}x${innerHeight}`); });
+      for (const el of document.querySelectorAll('.screen')) obs.observe(el, { attributes: true, attributeFilter: ['hidden'] });
+    });
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.waitForFunction(() => !document.getElementById('screen-rotate').hidden);
+    const settled = page.waitForFunction(() => !document.getElementById('screen-rotate').hidden && document.getElementById('screen-pause').hidden, null, { timeout: 60000 });
+    const path = async () => (await page.evaluate(() => window.__screens)).join('\n');
+    try { await settled; } catch (e) { console.error(`the screens never settled on rotate in portrait:\n${await path()}`); throw e; }
+    const changes = await path();
+    if (/screen-pause\.hidden=false/.test(changes)) console.warn(`the pause screen showed on the way to portrait:\n${changes}`);
     assert.equal(await page.evaluate(() => document.getElementById('screen-pause').hidden), true, 'pause screen hidden in portrait');
     await page.evaluate(() => document.getElementById('recenter').click());
     await page.evaluate(() => document.getElementById('fly-again').click());

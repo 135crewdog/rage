@@ -134,9 +134,14 @@ async function drawMap(width, dpr = 2) {
     label(place.hud, fits ? s.x + 14 : s.x - 14, s.y - 14, GREEN, 13, fits ? 'left' : 'right');
   }
   // the bullseye
+  // the bullseye, drawn at the map's edge when it lies beyond it, with how far
   const be = px(BULLSEYE.lat, BULLSEYE.lon);
-  twice(() => { ctx.beginPath(); ctx.arc(be.x, be.y, 16, 0, Math.PI * 2); ctx.moveTo(be.x + 8, be.y); ctx.arc(be.x, be.y, 8, 0, Math.PI * 2); ctx.stroke(); });
-  label('bullseye', be.x - 20, be.y + 2, '#fff', 13, 'right');
+  const ex = Math.min(Math.max(be.x, 24), width - 24), ey = Math.min(Math.max(be.y, 24), height - 24);
+  const off = Math.hypot(Math.max(0, -be.x, be.x - width), Math.max(0, -be.y, be.y - height)) / k / 1000;   // beyond the map's edge, km
+  twice(() => { ctx.beginPath(); ctx.arc(ex, ey, 16, 0, Math.PI * 2); ctx.moveTo(ex + 8, ey); ctx.arc(ex, ey, 8, 0, Math.PI * 2); ctx.stroke(); });
+  const side = be.x < 0 ? 'west' : be.x > width ? 'east' : be.y < 0 ? 'north' : 'south';
+  const text = off > 0.5 ? `bullseye: ${BULLSEYE.name}, ${off.toFixed(0)} km ${side}` : 'bullseye';
+  if (ex < width / 2) label(text, ex + 22, ey + 2, '#fff', 13, 'left'); else label(text, ex - 22, ey + 2, '#fff', 13, 'right');
   // the air starts: the app icon's F-16, pointed on each heading
   const svg = await (await fetch('./icons/icon.svg')).text();
   const pts = svg.match(/points="([^"]+)"/)[1].trim().split(/\s+/).map((p) => p.split(',').map(Number));
@@ -166,7 +171,8 @@ async function drawHold({ kind, shot }) {
   renderer.setPixelRatio(1); renderer.setSize(W, H, false); renderer.setClearColor(0x000000, 0);
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(24, W / H, 1, 2000);
-  if (kind === 'pitch') { camera.position.set(0, 104, 260); camera.lookAt(0, 16, 0); } else { camera.position.set(0, 26, 380); camera.lookAt(0, -6, 0); }
+  // both views from the same distance, 381 mm, so the phone is the same size in each
+  if (kind === 'pitch') { camera.position.set(0, 142, 354); camera.lookAt(0, 16, 0); } else { camera.position.set(0, 26, 380); camera.lookAt(0, -6, 0); }
   scene.add(new THREE.HemisphereLight(0xffffff, 0x444455, 1.2));
   const key = new THREE.DirectionalLight(0xffffff, 1.5); key.position.set(-80, 120, 160); scene.add(key);
   const rim = new THREE.DirectionalLight(0xffffff, 0.8); rim.position.set(60, 40, -120); scene.add(rim);
