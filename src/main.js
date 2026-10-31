@@ -83,6 +83,10 @@ function resize() {
   renderPending = true;
 }
 resize();   // and on every resize event, through onRotate below
+// iOS drops a WebGL context under memory pressure. Acknowledged, the loss is
+// temporary: three.js rebuilds everything when the context comes back.
+view.addEventListener('webglcontextlost', (e) => { e.preventDefault(); pause(); });
+view.addEventListener('webglcontextrestored', () => { renderPending = true; });
 // iOS can fire resize before the layout has settled, above all as a
 // home-screen app at launch and on rotation, which leaves the camera with the
 // wrong aspect; so every frame also checks the canvas's real size.

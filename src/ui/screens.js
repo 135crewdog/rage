@@ -56,12 +56,6 @@ export function createScreens({ version, onFly, onResume, onRecenter, onFlyAgain
   document.getElementById('fly-again').addEventListener('click', onFlyAgain);
   document.getElementById('crash-again').addEventListener('click', onFlyAgain);
   for (const id of ['settings-open', 'settings-start']) document.getElementById(id).addEventListener('click', () => { previous = current; show('settings'); });
-  // the user guide is a page beside the app, opened in this window and not cached: offline the button is dimmed and inert
-  const guide = document.getElementById('guide');
-  const guideOnline = () => guide.classList.toggle('offline', typeof navigator !== 'undefined' && navigator.onLine === false);
-  guideOnline();
-  guide.addEventListener('click', (e) => { if (navigator.onLine === false) e.preventDefault(); });   // the keyboard, too: a dimmed link must not navigate
-  window.addEventListener('online', guideOnline); window.addEventListener('offline', guideOnline);
   document.getElementById('settings-done').addEventListener('click', () => show(previous || 'pause'));
   document.getElementById('credits-open').addEventListener('click', () => show('credits'));
   document.getElementById('credits-back').addEventListener('click', () => show('settings'));
