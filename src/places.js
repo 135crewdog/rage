@@ -18,8 +18,8 @@ const D2R = Math.PI / 180, R2D = 180 / Math.PI;
 const METRES_PER_NM = 1852;
 export const START_AGL_FT = 5000;
 export const STEP_NM = 2;            // passing within this of a steerpoint steps to the next
-// The bullseye: Kanab Municipal Airport (KKNB), N 37°00'37.8" W 112°31'53.3" (FAA), near the middle of the five places. One point; move it here.
-export const BULLSEYE = { lat: 37.010511, lon: -112.531478, name: 'Kanab Municipal Airport' };
+// The bullseye: the Mormon Mesa VORTAC (MMM), N 36°46'09.31" W 114°16'38.83" (FAA), west of centre by Lake Mead. One point; move it here.
+export const BULLSEYE = { lat: 36 + 46 / 60 + 9.31 / 3600, lon: -(114 + 16 / 60 + 38.83 / 3600), name: 'Mormon Mesa VORTAC' };
 
 export const PLACES = [
   { name: 'Zion National Park', hud: 'ZION', patch: 'Zion', start: { lat: 37.19, lon: -112.99, heading: 0 }, sight: { lat: 37.27, lon: -112.95 }, where: 'over Springdale, heading north up the canyon' },
