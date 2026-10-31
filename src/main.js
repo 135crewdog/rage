@@ -4,7 +4,7 @@
 
 import * as THREE from 'three';
 import { Simulation, stepsFor, DT } from './sim/simulation.js';
-import { IX, quaternionOf } from './sim/dynamics.js';
+import { IX, quaternionOf, crashed } from './sim/dynamics.js';
 import { positionToWorld, attitudeToWorld, vectorToWorld, METRES_PER_FOOT } from './render/frames.js';
 import * as Quat from './sim/quaternion.js';
 import { createWorld } from './render/world.js';
@@ -378,7 +378,7 @@ function frame(now) {
       prevPose = pose;
       sim.step(stick, throttleValue, DT);
       pose = poseOf(sim.state);
-      if (sim.crashed || sim.state[IX.H] <= groundFt(sim.state)) { crash(); break; }   // the ground that is there
+      if (sim.crashed || crashed(sim.state, groundFt(sim.state))) { crash(); break; }   // the ground that is there
     }
   }
 

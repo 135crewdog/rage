@@ -114,7 +114,7 @@ Rigid body, 6 degrees of freedom, constant mass, flat non-rotating earth. Use th
 
 **Outside the data.** The tables cover α −10..45° and β ±30°; beyond that they extrapolate linearly from the end segment, as the book does. The FCS keeps the jet well inside (section 8.5). Hard pushes are expected to reach α of −10 to −12° (a −3 g push at 250 KCAS needs about −11°); that's fine. Beyond α < −15° or α > 45°, the simulation must stay numerically stable and set an `outOfEnvelope` flag the debug overlay shows. It must never produce NaN.
 
-**Ground.** When the jet is below the ground the flight ends in a crash state. The model itself knows only sea level (h ≤ 0); the app compares h with the terrain's height under the jet, read from the same heightmap the ground is drawn from. There is no landing gear in this model.
+**Ground.** When the jet is below the ground the flight ends in a crash state: `crashed(x, groundFt)`, true when h is at or below the ground's height. The model itself knows only sea level (the default, h ≤ 0); the app passes the terrain's height under the jet, read from the same heightmap the ground is drawn from. There is no landing gear in this model.
 
 ## 5. Aerodynamics
 
@@ -350,6 +350,7 @@ Three layers. All run headless in Node from the command line; none needs a brows
 - **Engine**: thrust at the table's grid points is exact; power-lag rates match the book's PDOT for a few hand-picked cases.
 - **Frames**: the conversion tests of section 2.2.
 - **Signs**: each surface's step response has the sign in section 2.3.
+- **Ground**: `crashed` against a given height, and against the real region's height at Springdale.
 
 ### 12.2 The FCS behaves like an F-16
 
@@ -367,6 +368,7 @@ Each test flies the full simulation (FCS, actuators, engine) from a trimmed 1 g 
 | 8 | Full right stick at 1 g and about 20° AoA (about 120 KCAS, sea level) | roll rate is aileron-limited, 80–140°/s; α stays at or below 25°; |β| < 5° |
 | 9 | Stick released in a 60° bank | bank holds within 8° over 10 s; nose drops (no bank compensation) |
 | 10 | Any input sequence, including random stick for 60 s, at any speed from 100 to 700 KCAS | no NaN; α stays below 32° (the backstop engages at 30°) |
+| 11 | Stick released at a 1 g trim past the limiter onset (105 and 115 KCAS, α 25° and 21°) | the limiter unloads: α below 15° within 2 s; n_z never below 0; the stabilator within ±5° from 3 s on. (The pilot's command is floored at 0 g this slow; the limiter's subtraction comes after the floor, as in the jet, so the law may command below it to bring α down.) |
 
 Also unit-test the roll limiter on its own: pmax = 279°/s at α 5° and q̄ 167 psf; 168°/s at α 25° and q̄ 38.5 psf; 88°/s at α 25°, q̄ 38.5 psf and el +25°.
 

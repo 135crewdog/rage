@@ -4,6 +4,8 @@ import { readFileSync } from 'node:fs';
 import { inflateSync } from 'node:zlib';
 import { decodeHeights, createSampler, createProjection } from '../src/render/heightmap.js';
 import { altitudeDisplay, RADAR_BELOW_FT } from '../src/hud/hud.js';
+import { makeState, crashed } from '../src/sim/dynamics.js';
+import { METRES_PER_FOOT } from '../src/render/frames.js';
 
 const near = (a, b, tol, msg) => assert.ok(Math.abs(a - b) <= tol, `${msg ?? ''} ${a} vs ${b}`);
 
@@ -134,6 +136,11 @@ test('the real region: known places are at their heights', () => {
     near(got, h, tol, name);
   }
   near(s.heightAt(0, 0), 1246, 30, 'the world origin is Springdale');
+  // the crash rule against this ground: a jet over Springdale at the valley floor's height is down; a foot higher is flying
+  const floorFt = s.heightAt(0, 0) / METRES_PER_FOOT;
+  assert.equal(crashed(makeState({ vt: 500, h: floorFt + 1 }), floorFt), false, 'a foot over Springdale');
+  assert.equal(crashed(makeState({ vt: 500, h: floorFt }), floorFt), true, 'on Springdale');
+  assert.equal(crashed(makeState({ vt: 500, h: floorFt - 1 }), 0), false, 'the model alone sees only the sea');
   // the lakes: each box holds its lake, dead flat at the level the survey recorded
   assert.equal(meta.lakes.length, 2);
   for (const [name, lat, lon] of [['Lake Powell', 36.95, -111.47], ['Lake Mead', 36.02, -114.73]]) {
