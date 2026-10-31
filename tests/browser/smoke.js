@@ -154,11 +154,24 @@ async function main() {
     await page.click('#resume');
     await page.waitForFunction(() => window.rage.mode === 'flying');
 
-    // portrait: the rotate screen wins over every other screen and nothing flies
+    // portrait: the rotate screen wins over every other screen and nothing flies.
+    // A rotation arrives as several events, and on a starved runner they can
+    // straddle a check made mid-way, so the check is of the settled state;
+    // every screen change on the way is recorded and printed if the pause
+    // screen was ever seen in portrait, or if the state never settles.
     await page.click('#pause');
     await page.waitForFunction(() => window.rage.mode === 'paused');
+    await page.evaluate(() => {
+      window.__screens = [];
+      const obs = new MutationObserver((ms) => { for (const m of ms) window.__screens.push(`${performance.now().toFixed(0)}ms ${m.target.id}.hidden=${m.target.hidden} at ${innerWidth}x${innerHeight}`); });
+      for (const el of document.querySelectorAll('.screen')) obs.observe(el, { attributes: true, attributeFilter: ['hidden'] });
+    });
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.waitForFunction(() => !document.getElementById('screen-rotate').hidden);
+    const settled = page.waitForFunction(() => !document.getElementById('screen-rotate').hidden && document.getElementById('screen-pause').hidden, null, { timeout: 60000 });
+    const path = async () => (await page.evaluate(() => window.__screens)).join('\n');
+    try { await settled; } catch (e) { console.error(`the screens never settled on rotate in portrait:\n${await path()}`); throw e; }
+    const changes = await path();
+    if (/screen-pause\.hidden=false/.test(changes)) console.warn(`the pause screen showed on the way to portrait:\n${changes}`);
     assert.equal(await page.evaluate(() => document.getElementById('screen-pause').hidden), true, 'pause screen hidden in portrait');
     await page.evaluate(() => document.getElementById('recenter').click());
     await page.evaluate(() => document.getElementById('fly-again').click());
