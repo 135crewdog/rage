@@ -61,7 +61,7 @@ async function main() {
     const nav = await page.evaluate(() => ({ name: window.rage.nav.steer.name, range: window.rage.nav.steer.range, bearing: window.rage.nav.steer.bearing, be: window.rage.nav.bullseye }));
     assert.equal(nav.name, 'ZION');
     assert.ok(Math.abs(nav.range - 118) < 3 && Math.abs(nav.bearing - 58) < 3, `Zion at 058 for 118: ${nav.bearing} for ${nav.range}`);
-    assert.ok(Math.abs(nav.be.bearing - 149) < 3 && Math.abs(nav.be.range - 70) < 3, `Nellis is bullseye 149 for 70 from Homey: ${nav.be.bearing} for ${nav.be.range}`);
+    assert.ok(Math.abs(nav.be.bearing - 249) < 3 && Math.abs(nav.be.range - 129) < 3, `Nellis is bullseye 249 for 129 from Kanab: ${nav.be.bearing} for ${nav.be.range}`);
     // the whole region loaded: five patches, and Las Vegas 194 km west is at its height
     const region = await page.evaluate(() => ({ patches: window.rage.terrain.region.patches.length, vegas: window.rage.terrain.sampler.heightAt(-194066, 120023) }));
     assert.equal(region.patches, 5, 'five patches');

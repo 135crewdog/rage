@@ -18,8 +18,8 @@ const D2R = Math.PI / 180, R2D = 180 / Math.PI;
 const METRES_PER_NM = 1852;
 export const START_AGL_FT = 5000;
 export const STEP_NM = 2;            // passing within this of a steerpoint steps to the next
-// The bullseye: Homey Airport (Groom Lake), N 37°14'00" W 115°47'30", 26 km west of the region's edge. One point; move it here.
-export const BULLSEYE = { lat: 37 + 14 / 60, lon: -(115 + 47.5 / 60), name: 'Homey Airport' };
+// The bullseye: Kanab Municipal Airport (KKNB), N 37°00'37.8" W 112°31'53.3" (FAA), near the middle of the five places. One point; move it here.
+export const BULLSEYE = { lat: 37.010511, lon: -112.531478, name: 'Kanab Municipal Airport' };
 
 export const PLACES = [
   { name: 'Zion National Park', hud: 'ZION', patch: 'Zion', start: { lat: 37.19, lon: -112.99, heading: 0 }, sight: { lat: 37.27, lon: -112.95 }, where: 'over Springdale, heading north up the canyon' },
