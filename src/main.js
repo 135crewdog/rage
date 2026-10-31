@@ -225,6 +225,7 @@ function pause() {
   mode = 'paused';
   look.reset();                               // resume from the plain chase view
   screens.show('pause');
+  checkForUpdate();
 }
 
 function resume() {
@@ -250,11 +251,12 @@ function crash() {
   mode = 'crashed';
   controls.hidden = true;
   screens.show('crashed');
+  checkForUpdate();
 }
 
 // Pause when the app is hidden; resume only from the pause screen.
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden) { pause(); } else { keepAwake(); }
+  if (document.hidden) { pause(); } else { keepAwake(); checkForUpdate(); }
 });
 
 // Portrait: show the rotate screen; on any rotation during flight, pause and recenter.
@@ -286,9 +288,10 @@ if (screen.orientation) screen.orientation.addEventListener('change', onScreenAn
 window.addEventListener('orientationchange', onScreenAngle);
 
 // ---- service worker and updates ----
-let waiting = null;
+let waiting = null, registration = null;
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('./sw.js').then((reg) => {
+    registration = reg;
     const watch = (w) => {
       if (!w) return;
       if (w.state === 'installed' && navigator.serviceWorker.controller) { waiting = w; screens.offerUpdate(true); }
@@ -302,6 +305,13 @@ if ('serviceWorker' in navigator) {
   // Reload only for an update the pilot accepted: the first install also
   // takes control (clients.claim) and must not interrupt a flight.
   navigator.serviceWorker.addEventListener('controllerchange', () => { if (updateAccepted) location.reload(); });
+}
+// The browser looks for a new sw.js only on a navigation, and a home-screen
+// app resumed from the background makes none; so ask whenever the app comes
+// back to the screen and whenever flying stops. The offer still shows only
+// on the start and pause screens, and nothing activates until it is taken.
+function checkForUpdate() {
+  if (registration) registration.update().catch(() => {});
 }
 let updateAccepted = false;
 function applyUpdate() {

@@ -74,10 +74,13 @@ test('heightmap: the projection puts the origin at the origin and metres where t
   near(back.lat, 36.19, 1e-9); near(back.lon, -111.99, 1e-9);
 });
 
-// The PNGs make-heightmap.py writes: 8-bit RGB, every row unfiltered, one IDAT.
+// The PNGs make-heightmap.py writes: 8-bit RGB, each row under one of PNG's
+// five filters (none, sub, up, average, Paeth), one IDAT; undone here, so the
+// test reads exactly what the browser decodes.
 function readHeightPng(path) {
   const png = readFileSync(path);
   const w = png.readUInt32BE(16), h = png.readUInt32BE(20);
+  assert.deepEqual([png[24], png[25]], [8, 2], '8-bit RGB');
   let pos = 8; const idat = [];
   while (pos < png.length) {
     const len = png.readUInt32BE(pos), type = png.toString('latin1', pos + 4, pos + 8);
@@ -85,10 +88,20 @@ function readHeightPng(path) {
     pos += 12 + len;
   }
   const raw = inflateSync(Buffer.concat(idat));
+  const stride = w * 3, bpp = 3;
+  const paeth = (a, b, c) => { const p = a + b - c, pa = Math.abs(p - a), pb = Math.abs(p - b), pc = Math.abs(p - c); return pa <= pb && pa <= pc ? a : pb <= pc ? b : c; };
+  let prev = new Uint8Array(stride), cur = new Uint8Array(stride);
   const out = new Uint16Array(w * h);
   for (let y = 0; y < h; y++) {
-    assert.equal(raw[y * (w * 3 + 1)], 0, 'unfiltered row');
-    for (let x = 0; x < w; x++) { const i = y * (w * 3 + 1) + 1 + x * 3; out[y * w + x] = raw[i] * 256 + raw[i + 1]; }
+    const filter = raw[y * (stride + 1)], line = raw.subarray(y * (stride + 1) + 1, (y + 1) * (stride + 1));
+    assert.ok(filter <= 4, `a PNG filter type, row ${y}`);
+    for (let i = 0; i < stride; i++) {
+      const a = i >= bpp ? cur[i - bpp] : 0, b = prev[i], c = i >= bpp ? prev[i - bpp] : 0;
+      const guess = filter === 0 ? 0 : filter === 1 ? a : filter === 2 ? b : filter === 3 ? (a + b) >> 1 : paeth(a, b, c);
+      cur[i] = (line[i] + guess) & 255;
+    }
+    for (let x = 0; x < w; x++) out[y * w + x] = cur[x * 3] * 256 + cur[x * 3 + 1];
+    [prev, cur] = [cur, prev];
   }
   return { w, h, heights: out };
 }
