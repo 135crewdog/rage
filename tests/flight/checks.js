@@ -108,7 +108,8 @@ export function check7() {
   // flown on through four rolls: the sideslip of each is printed, because it grows (8.7)
   const { rows, summary } = flyManoeuvre('roll', { kcas: 350, t: 7 });
   const m = rollMetrics(rows, 0.5);
-  const pass = inBand(m.pMax, 270, 330) && m.betaMax < 3 && m.tDone !== null;
+  // four rolls, each under 3° of sideslip, and the jet near 1 g throughout with the pitch stick at trim
+  const pass = inBand(m.pMax, 270, 330) && m.tDone !== null && m.perRoll.length >= 4 && m.perRoll.every((b) => b < 3) && summary.nzMax < 2 && summary.nzMin > 0.5;
   return { name: '7 full right stick, 1 g, 350 KCAS', pass,
     text: `peak roll rate ${f(m.pMax, 0)} °/s, |β| max ${f(m.betaMax, 2)}° through 360° (done at ${m.tDone === null ? 'never' : f(m.tDone - 0.5, 2) + ' s'}), then ${m.perRoll.slice(1).map((b) => f(b, 2) + '°').join(', ')} on the rolls after; n_z ${f(summary.nzMin, 2)}–${f(summary.nzMax, 2)}, α to ${f(summary.alphaMax, 1)}°` };
 }

@@ -5,7 +5,8 @@
 
 import { PITCH, ROLL, YAW } from './data/fcs.js';
 import { G as GRAV, S, CBAR, JYY, SURFACES } from './data/aircraft.js';
-import { interp1 } from './table.js';
+import { interp1, interp2 } from './table.js';
+import * as AERO from './data/aero.js';
 
 const R2D = 180 / Math.PI;
 const D2R = Math.PI / 180;
@@ -58,8 +59,12 @@ export function alphaLead(alphaDot, qbar, el) {
   return alphaDot * (swing + PITCH.alphaRateLead) + alphaDot * alphaDot / (2 * Math.max(decel, 1));
 }
 
-export function pitchGain(qbar) {
-  return clamp(PITCH.gainQbar / Math.max(qbar, PITCH.gainQbarFloor), PITCH.gainMin, PITCH.gainMax);
+export function pitchGain(qbar, sigma = 1) {
+  return clamp(PITCH.gainQbar / Math.max(qbar, PITCH.gainQbarFloor), PITCH.gainMin, PITCH.gainMax) * Math.pow(sigma, PITCH.gainDensity ?? 0);
+}
+// the pitch-rate feedback's gain: the airframe's own damping falls with air density, so this can rise as it falls
+export function dampGain(qbar, sigma = 1) {
+  return clamp(PITCH.gainQbar / Math.max(qbar, PITCH.gainQbarFloor), PITCH.gainMin, PITCH.gainMax) * Math.pow(sigma, -(PITCH.dampDensity ?? 0));
 }
 
 // Stick force to roll-rate request (deg/s), NASA sidestick bands.
@@ -96,11 +101,26 @@ export function rollGain(qbar) {
   return clamp(ROLL.gainQbar / qbar, ROLL.gainMin, ROLL.gainMax);
 }
 
+// The rudder that cancels the aileron's own yawing moment, read from the
+// aero tables at zero sideslip: −DNDA/DNDR, in degrees of rudder per degree
+// of aileron (the tables are per ail/20 and per rdr/30). The flaperons' yaw
+// is proverse below 20° AoA, so the rudder goes against the aileron there,
+// and adverse above, so it goes with it.
+export function ariFromTables(alphaDeg) {
+  const a = clamp(alphaDeg, AERO.ALPHA[0], AERO.ALPHA[AERO.ALPHA.length - 1]);
+  const dnda = interp2(AERO.BETA_SIGNED, AERO.ALPHA, AERO.DNDA, 0, a);
+  const dndr = interp2(AERO.BETA_SIGNED, AERO.ALPHA, AERO.DNDR, 0, a);
+  return -dnda / dndr * (30 / 20);
+}
+
+// The interconnect: the tables' cancellation of the aileron's yaw, plus a
+// tuned rise with AoA for the yaw a roll about the velocity vector needs;
+// faded out with Mach and off above ariOffAlpha.
 export function ariGain(alphaDeg, mach) {
   if (alphaDeg > YAW.ariOffAlpha) return 0;
   const a = clamp(alphaDeg, YAW.ariAlpha[0], YAW.ariAlpha[YAW.ariAlpha.length - 1]);
   const [m0, m1] = YAW.ariMach;
-  return interp1(YAW.ariAlpha, YAW.ariGain, a) * clamp((m1 - mach) / (m1 - m0), 0, 1);
+  return (ariFromTables(alphaDeg) + interp1(YAW.ariAlpha, YAW.ariGain, a)) * clamp((m1 - mach) / (m1 - m0), 0, 1);
 }
 
 export function yawGain(qbar) {
@@ -141,10 +161,11 @@ export function initFromTrim(mem, meas, el, stickPitch = 0) {
   mem.pcmd = 0;
   mem.rollI = 0;
   mem.backstop = false;
-  const G = pitchGain(meas.qbar);
+  const sigma = meas.sigma ?? 1;
+  const G = pitchGain(meas.qbar, sigma);
   const neff = Math.max(mem.ncmd, negativeLimit(meas.qbar)) - limiterSubtraction(meas.alphaDeg);
   const e = neff - meas.nz;    // washout output is zero at init
-  mem.I = -(el - PITCH.Kq * G * meas.q * R2D - PITCH.Ka * (meas.alphaDeg - PITCH.alpha0)) / G - PITCH.Kp * e;
+  mem.I = -(el - PITCH.Kq * dampGain(meas.qbar, sigma) * meas.q * R2D - PITCH.Ka * (meas.alphaDeg - PITCH.alpha0)) / G - PITCH.Kp * e;
   return mem;
 }
 
@@ -170,8 +191,9 @@ export function fcsStep(mem, stick, meas, dt) {
   const qWashed = q - mem.qWash;
   const e = neff - nz - (PITCH.crossover / GRAV) * qWashed;
 
-  const G = pitchGain(qbar);
-  const feedback = PITCH.Kq * G * qDeg + PITCH.Ka * (mem.alphaFilt - PITCH.alpha0);
+  const sigma = meas.sigma ?? 1;
+  const G = pitchGain(qbar, sigma);
+  const feedback = PITCH.Kq * dampGain(qbar, sigma) * qDeg + PITCH.Ka * (mem.alphaFilt - PITCH.alpha0);
 
   let el;
   if (mem.backstop) {
