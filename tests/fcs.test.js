@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   createMemory, initFromTrim, fcsStep, balancingStick,
   limiterLoad, limiterSubtraction, pitchRequest, negativeLimit, pseudoAlpha, pitchGain,
-  rollRequest, rollRateLimit, ariGain, yawGain,
+  rollRequest, rollRateLimit, ariGain, ariFromTables, yawGain,
 } from '../src/sim/fcs.js';
 import { PITCH } from '../src/sim/data/fcs.js';
 import { Simulation, stepsFor, DT } from '../src/sim/simulation.js';
@@ -81,8 +81,13 @@ test('roll-rate limiter: 279 °/s at α 5°, q̄ 167; 168 at α 25°, q̄ 38.5; 
   assert.equal(rollRateLimit(0, 1000, -10), 308);
 });
 
-test('interconnect rises with AoA, fades with Mach, off above 35°', () => {
-  assert.equal(ariGain(0, 0.3), 0);
+test('interconnect: the tables\' cancellation of the aileron\'s yaw, a rise with AoA, a fade with Mach, off above 35°', () => {
+  // −DNDA/DNDR × 30/20 at β = 0: the flaperons' yaw is proverse at low α, so the rudder goes against the aileron
+  assert.ok(Math.abs(ariFromTables(0) - (-0.0100 / 0.0450 * 1.5)) < 1e-9, `at 0°: ${ariFromTables(0)}`);
+  assert.ok(Math.abs(ariFromTables(20)) < 1e-9, 'DNDA is zero at 20°');
+  assert.ok(ariFromTables(30) > 0.2, 'adverse above 20°: with the aileron');
+  assert.ok(Math.abs(ariGain(0, 0.3) - ariFromTables(0)) < 1e-9, 'at 0° the tuned part is zero');
+  assert.ok(ariGain(0, 0.3) < ariGain(10, 0.3));
   assert.ok(ariGain(10, 0.3) < ariGain(20, 0.3));
   assert.ok(ariGain(20, 0.3) < ariGain(30, 0.3));
   assert.ok(ariGain(20, 0.9) < ariGain(20, 0.3));

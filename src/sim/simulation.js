@@ -9,6 +9,7 @@ import { trimLevel } from './trim.js';
 import { airdata, trueAirspeedFromKcas } from './airdata.js';
 import { tgear } from './engine.js';
 import { SURFACES } from './data/aircraft.js';
+import { RHO0 } from './atmosphere.js';
 
 export class Simulation {
   // An air start: wings level, trimmed for 1 g at h (ft) and kcas, heading
@@ -48,6 +49,7 @@ export class Simulation {
     return {
       alphaDeg: a.alpha * R2D, p: x[IX.P], q: x[IX.Q], r: x[IX.R],
       nz: a.nz, ny: a.ny, qbar: a.qbar, mach: a.mach, el: x[IX.EL],
+      sigma: 2 * a.qbar / (a.vt * a.vt) / RHO0,   // air density ratio, as the jet's air data computer has it from static pressure
     };
   }
 
