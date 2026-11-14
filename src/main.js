@@ -413,9 +413,12 @@ function frame(now) {
 
   // Every frame in flight; otherwise SETTLE frames after the last change,
   // then rest (no frame is asked for until wake() is called again).
+  // A wake() during this frame (a late resize, a screen shown on a crash) may
+  // already have asked for the next one: never ask twice, or the loop splits
+  // into two chains that both run for the rest of the flight.
   settle = mode === 'flying' ? SETTLE : settle - 1;
-  if (settle > 0 && !document.hidden) waitingFrame = requestAnimationFrame(frame);
-  else last = null;
+  if (settle > 0 && !document.hidden) { if (waitingFrame === null) waitingFrame = requestAnimationFrame(frame); }
+  else if (waitingFrame === null) last = null;
   // Under an opaque screen (start, settings, credits, rotate, denied) none
   // of the view shows, so nothing is drawn at all. The pause and crash
   // screens are translucent: the view draws under them until it rests.
