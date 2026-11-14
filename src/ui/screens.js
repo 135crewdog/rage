@@ -31,7 +31,7 @@ export function applyPlace(name) {
 
 // locked: a function returning the name of a screen that must show instead
 // of any other (the rotate screen while the phone is portrait), or null.
-export function createScreens({ version, onFly, onResume, onRecenter, onFlyAgain, onUpdate, onPlace, locked = () => null }) {
+export function createScreens({ version, onFly, onResume, onRecenter, onFlyAgain, onUpdate, onPlace, onChange = () => {}, locked = () => null }) {
   const screens = {};
   for (const el of document.querySelectorAll('.screen')) screens[el.id.replace('screen-', '')] = el;
   const container = document.getElementById('screens');
@@ -44,6 +44,7 @@ export function createScreens({ version, onFly, onResume, onRecenter, onFlyAgain
     for (const [k, el] of Object.entries(screens)) el.hidden = k !== name;
     container.classList.toggle('clear', name === null);
     current = name;
+    onChange(name);
   }
   function hide() { show(null); }
 

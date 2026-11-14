@@ -71,7 +71,16 @@ attachLook(view, look, () => mode === 'flying');
 const hud = createHud(document.getElementById('hud'));
 
 let sizedW = 0, sizedH = 0;
-let renderPending = true;     // draw the next frame even under an opaque screen: something changed
+// The draw loop runs every frame in flight. Off flight it draws for a moment
+// after anything changes (the camera eases, iOS can report a size late),
+// then rests until the next change, so a paused game or an open menu costs
+// the battery next to nothing. wake() is that change.
+const SETTLE = 30;            // frames drawn after a change
+let settle = SETTLE, waitingFrame = null;
+function wake() {
+  settle = SETTLE;
+  if (waitingFrame === null && !document.hidden) waitingFrame = requestAnimationFrame(frame);
+}
 function resize() {
   const w = view.clientWidth, h = view.clientHeight;
   if (!w || !h) return;
@@ -80,13 +89,13 @@ function resize() {
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
   hud.resize();
-  renderPending = true;
+  wake();
 }
 resize();   // and on every resize event, through onRotate below
 // iOS drops a WebGL context under memory pressure. Acknowledged, the loss is
 // temporary: three.js rebuilds everything when the context comes back.
 view.addEventListener('webglcontextlost', (e) => { e.preventDefault(); pause(); });
-view.addEventListener('webglcontextrestored', () => { renderPending = true; });
+view.addEventListener('webglcontextrestored', wake);
 // iOS can fire resize before the layout has settled, above all as a
 // home-screen app at launch and on rotation, which leaves the camera with the
 // wrong aspect; so every frame also checks the canvas's real size.
@@ -114,6 +123,7 @@ const screens = createScreens({
   version: APP_VERSION,
   onFly: fly, onResume: resume, onRecenter: recenter, onFlyAgain: flyAgain, onUpdate: applyUpdate,
   onPlace: (name) => { place = name; if (mode === 'start' && terrain) airStart(); },
+  onChange: () => wake(),          // a screen came or went: the view may show again
   locked: () => (isPortrait() ? 'rotate' : null),
 });
 const throttle = createThrottle(document.getElementById('throttle'), throttleValue, (v) => { throttleValue = v; });
@@ -140,7 +150,7 @@ function airStart() {
   throttleValue = sim.trimThrottle;
   throttle.set(throttleValue);
   chase.reset();
-  renderPending = true;
+  wake();
 }
 airStart();
 // Fly waits for the jet and the ground: on a first visit they may still be downloading.
@@ -148,6 +158,7 @@ Promise.all([jet.ready, loadTerrain()]).then(([, t]) => {
   terrain = t;
   airStart();                                   // now 5,000 ft above the ground that is there
   screens.ready();
+  wake();
 }, (e) => { console.error(e); screens.failed(); });
 
 // ---- tilt input ----
@@ -196,10 +207,23 @@ function showForMode() {
 }
 
 // ---- screens and modes ----
-let wakeLock = null;
+// The screen is kept awake only in flight, where nobody touches it. On the
+// start, pause, crash and other screens it is let go, so a phone put down
+// with Rage open can sleep. Both are asked for in a tap (Fly, Resume), as
+// iOS needs, and iOS drops the lock itself when the app is hidden.
+let wakeLock = null, wantAwake = false;
 function keepAwake() {
+  wantAwake = true;
   if (!navigator.wakeLock) return;
-  navigator.wakeLock.request('screen').then((l) => { wakeLock = l; }).catch(() => {});
+  navigator.wakeLock.request('screen').then((held) => {
+    // the pilot may have paused before iOS answered: then let it go straight away
+    if (wantAwake) { wakeLock?.release().catch(() => {}); wakeLock = held; } else held.release().catch(() => {});
+  }).catch(() => {});
+}
+function letSleep() {
+  wantAwake = false;
+  wakeLock?.release().catch(() => {});
+  wakeLock = null;
 }
 
 function fly() {
@@ -210,23 +234,25 @@ function fly() {
     : Promise.resolve('granted');
   keepAwake();
   permission.then((state) => state === 'granted', () => false).then((granted) => {
-    if (!granted) { screens.show('denied'); return; }
+    if (!granted) { letSleep(); screens.show('denied'); return; }
     recenter();
     startFlight();
   });
 }
 
 function startFlight() {
-  if (isPortrait()) { screens.show('rotate'); return; }   // no flying in portrait
+  if (isPortrait()) { letSleep(); screens.show('rotate'); return; }   // no flying in portrait
   mode = 'flying';
   controls.hidden = false;
   screens.hide();
   carry = 0;
+  wake();
 }
 
 function pause() {
   if (mode !== 'flying') return;
   mode = 'paused';
+  letSleep();
   look.reset();                               // resume from the plain chase view
   screens.show('pause');
   checkForUpdate();
@@ -238,6 +264,7 @@ function resume() {
   screens.hide();
   carry = 0;
   keepAwake();
+  wake();
 }
 
 // Fly again returns to the start screen, at the air start of the chosen
@@ -253,6 +280,7 @@ function flyAgain() {
 
 function crash() {
   mode = 'crashed';
+  letSleep();
   controls.hidden = true;
   screens.show('crashed');
   checkForUpdate();
@@ -260,7 +288,7 @@ function crash() {
 
 // Pause when the app is hidden; resume only from the pause screen.
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden) { pause(); } else { keepAwake(); checkForUpdate(); }
+  if (document.hidden) { pause(); } else { checkForUpdate(); wake(); }   // flight is always paused by now; Resume asks for the wake lock again
 });
 
 // Portrait: show the rotate screen; on any rotation during flight, pause and recenter.
@@ -287,6 +315,7 @@ function onScreenAngle() {
   if (mode === 'flying') pause();
   if (mode === 'paused') recenter();
   showForMode();
+  wake();
 }
 if (screen.orientation) screen.orientation.addEventListener('change', onScreenAngle);
 window.addEventListener('orientationchange', onScreenAngle);
@@ -359,14 +388,14 @@ function noseNed(state) {
 // ---- the loop ----
 const debug = document.getElementById('debug');
 debug.hidden = !DEBUG;
-let last = performance.now();
-let frames = 0, fpsAt = last, fps = 0;
+let last = null;              // null after a rest: the next frame starts the clock afresh
+let frames = 0, fpsAt = performance.now(), fps = 0;
 const lerped = { position: new THREE.Vector3(), quaternion: new THREE.Quaternion() };
 
 function frame(now) {
-  requestAnimationFrame(frame);
+  waitingFrame = null;
   resizeIfChanged();
-  const elapsed = Math.min(0.25, (now - last) / 1000);
+  const elapsed = last === null ? 0 : Math.min(0.25, (now - last) / 1000);
   last = now;
 
   let fraction = 1;
@@ -382,12 +411,19 @@ function frame(now) {
     }
   }
 
+  // Every frame in flight; otherwise SETTLE frames after the last change,
+  // then rest (no frame is asked for until wake() is called again).
+  // A wake() during this frame (a late resize, a screen shown on a crash) may
+  // already have asked for the next one: never ask twice, or the loop splits
+  // into two chains that both run for the rest of the flight.
+  settle = mode === 'flying' ? SETTLE : settle - 1;
+  if (settle > 0 && !document.hidden) { if (waitingFrame === null) waitingFrame = requestAnimationFrame(frame); }
+  else if (waitingFrame === null) last = null;
   // Under an opaque screen (start, settings, credits, rotate, denied) none
-  // of the view shows: draw once after a change, then rest. The pause and
-  // crash screens are translucent, so the view keeps drawing under them.
+  // of the view shows, so nothing is drawn at all. The pause and crash
+  // screens are translucent: the view draws under them until it rests.
   const opaque = screens.current !== null && screens.current !== 'pause' && screens.current !== 'crashed';
-  if (opaque && !renderPending) return;
-  renderPending = false;
+  if (opaque) return;
 
   // render between the last two physics states
   lerped.position.lerpVectors(prevPose.position, pose.position, fraction);
@@ -422,7 +458,7 @@ function frame(now) {
     ].join('\n');
   }
 }
-requestAnimationFrame(frame);
+wake();
 
 // A read-only hook for the browser smoke test and the debug overlay.
 window.rage = {
